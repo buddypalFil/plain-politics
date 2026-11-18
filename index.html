@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Plain Politics</title>
+  <meta name="description" content="Paste a news article, speech, bill or manifesto and get a neutral explainer in plain words. Runs on your device when it can, in the cloud when it needs to." />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top-inner">
+      <div class="brand">
+        <span class="logo" aria-hidden="true">PP</span>
+        <div>
+          <h1>Plain Politics</h1>
+          <p class="tagline">Political text, explained in plain words. Neutral by design.</p>
+        </div>
+      </div>
+      <div id="device-pill" class="pill" role="status">Checking on-device AI…</div>
+    </div>
+  </header>
+
+  <main class="wrap grid">
+    <section class="panel" aria-labelledby="in-title">
+      <h2 id="in-title">1. Paste a political text</h2>
+      <p class="hint">A news article, a speech, a bill or a manifesto. Or try a made-up sample:</p>
+      <div id="samples" class="chips"></div>
+      <label class="sr-only" for="input">Text to explain</label>
+      <textarea id="input" rows="12" placeholder="Paste the text here…"></textarea>
+      <div class="count"><span id="char-count">0</span> characters</div>
+
+      <div class="options">
+        <label>Detail
+          <select id="detail">
+            <option value="short">Short</option>
+            <option value="full" selected>Full</option>
+          </select>
+        </label>
+        <label>Language
+          <select id="lang">
+            <option value="en" selected>English</option>
+            <option value="it">Italiano</option>
+            <option value="fr">Français</option>
+          </select>
+        </label>
+        <label>Run on
+          <select id="run">
+            <option value="auto" selected>Auto (device first)</option>
+            <option value="device">This device only</option>
+            <option value="cloud">Cloud only</option>
+          </select>
+        </label>
+      </div>
+
+      <button id="explain" class="primary" type="button">Explain it</button>
+      <p id="device-help" class="hint small" hidden></p>
+      <button id="setup-device" class="secondary" type="button" hidden>Set up on-device AI</button>
+    </section>
+
+    <section class="panel" aria-labelledby="out-title" aria-live="polite">
+      <div class="out-head">
+        <h2 id="out-title">2. The explainer</h2>
+        <div id="badge" class="badge" hidden></div>
+      </div>
+      <p id="route-note" class="hint small" hidden></p>
+      <div id="error" class="error" hidden></div>
+      <div id="output" class="output">
+        <p class="empty">Your explainer will appear here: a one-sentence summary, the main points, claims worth checking, who it affects, words explained, and questions to ask.</p>
+      </div>
+      <div id="actions" class="actions" hidden>
+        <button id="save" class="secondary" type="button">Save to my library</button>
+        <button id="copy" class="secondary" type="button">Copy</button>
+      </div>
+    </section>
+
+    <section class="panel library" aria-labelledby="lib-title">
+      <h2 id="lib-title">My library</h2>
+      <p class="hint small">Saved explainers stay private to this browser's anonymous account. We save the explainer and the first few lines of the text, never the whole text.</p>
+      <ul id="library" class="lib-list"><li class="empty">Nothing saved yet.</li></ul>
+    </section>
+  </main>
+
+  <footer class="wrap foot">
+    <p>Plain Politics explains; it doesn't take sides. AI can make mistakes, so check important claims against the original source.</p>
+    <p>On your device, your text never leaves your computer. In the cloud, it is sent to Google's Gemini API through Firebase AI Logic.</p>
+    <p>Built with Firebase AI Logic hybrid inference · <a href="https://github.com/buddypalFil/plain-politics">Source on GitHub</a></p>
+  </footer>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

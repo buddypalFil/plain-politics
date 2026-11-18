@@ -1,0 +1,23 @@
+rules_version = '2';
+
+// Each anonymous user can only see and change their own saved explainers.
+// Saved items are small and checked field by field; nothing else is stored.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid}/explainers/{id} {
+      allow read, delete: if request.auth != null && request.auth.uid == uid;
+
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['title', 'snippet', 'lang', 'source', 'markdown', 'createdAt'])
+        && request.resource.data.title is string && request.resource.data.title.size() <= 200
+        && request.resource.data.snippet is string && request.resource.data.snippet.size() <= 400
+        && request.resource.data.markdown is string && request.resource.data.markdown.size() <= 20000
+        && request.resource.data.lang in ['en', 'it', 'fr']
+        && request.resource.data.source in ['on_device', 'in_cloud']
+        && request.resource.data.createdAt == request.time;
+
+      allow update: if false;
+    }
+  }
+}

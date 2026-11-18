@@ -1,0 +1,14 @@
+{
+  "parameters": {
+    "cloud_model": {
+      "defaultValue": { "value": "gemini-3.5-flash-lite" },
+      "description": "Cloud Gemini model used when a request runs in the cloud. Change it here without a new release.",
+      "valueType": "STRING"
+    },
+    "device_char_limit": {
+      "defaultValue": { "value": "20000" },
+      "description": "Texts longer than this many characters go straight to the cloud (the on-device model has a smaller input limit).",
+      "valueType": "NUMBER"
+    }
+  }
+}

@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.firebase/
+*.log
+.DS_Store
+.env.local
+# Personal files that must never go to GitHub
+cv/
+HANDOVER.md
+CLAUDE.md
+firebase-debug.log
+# Drafts for the hackathon submission (demo script, Devpost text)
+submission/
+.claude/
