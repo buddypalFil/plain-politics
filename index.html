@@ -11,10 +11,11 @@
   <header class="top">
     <div class="wrap top-inner">
       <div class="brand">
-        <span class="logo" aria-hidden="true">PP</span>
+        <svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><rect x="2" y="2" width="60" height="60" rx="14" fill="#161513"/><g fill="none" stroke="#f4f0e8" stroke-width="4.2" stroke-linecap="round"><path d="M10 17h14c7 0 8 15 14 15"/><path d="M15 27h9c5 0 7 5 12 5"/><path d="M10 37h14c5 0 7-5 12-5"/><path d="M19 47h5c7 0 8-15 14-15"/><path d="M37 32h8"/></g><circle cx="52" cy="32" r="4.4" fill="#c4562a"/></svg>
         <div>
           <h1>Plain Politics</h1>
-          <p class="tagline">Political text, explained in plain words. Neutral by design.</p>
+          <p class="tagline">Political text, explained in plain words.</p>
+          <p class="strap">Private · Neutral · Plain</p>
         </div>
       </div>
       <div id="device-pill" class="pill" role="status">Checking on-device AI…</div>
@@ -110,6 +111,12 @@
         <h2 id="out-title">The explainer</h2>
         <div id="badge" class="badge" hidden></div>
       </div>
+      <div id="route" class="route" hidden aria-label="Where this explainer ran">
+        <span class="n" data-n="text"><i></i>Your text</span><span class="l"></span>
+        <span class="n" data-n="guard"><i></i>Privacy guard</span><span class="l"></span>
+        <span class="n" data-n="device"><i></i>Your device</span><span class="l"></span>
+        <span class="n" data-n="cloud"><i></i>Cloud</span>
+      </div>
       <p id="route-note" class="hint small" hidden></p>
       <div id="error" class="error" hidden></div>
       <button id="redact-send" class="secondary" type="button" hidden>Remove personal details and continue</button>
@@ -122,7 +129,13 @@
           </ol>
         </div>
       </div>
+      <div id="gauge" class="gauge" hidden>
+        <div class="gauge-label">Reading age</div>
+        <div class="scale"><span id="g-exp" class="dot e"></span><span id="g-orig" class="dot o"></span></div>
+        <div class="ends"><span>5</span><span id="g-cap"></span><span>20</span></div>
+      </div>
       <div id="actions" class="actions" hidden>
+        <button id="speak" class="secondary" type="button" aria-pressed="false">🔊 Read aloud</button>
         <button id="save" class="secondary" type="button">Save to my library</button>
         <button id="copy" class="secondary" type="button">Copy</button>
       </div>

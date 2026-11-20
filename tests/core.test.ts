@@ -93,3 +93,13 @@ test("italics render safely and leave snake_case words alone", () => {
   assert.ok(renderMarkdown("**bold** stays").includes("<strong>bold</strong>"));
   assert.ok(!renderMarkdown("_<script>x</script>_").includes("<script>"));
 });
+
+test("reading age: plain text scores lower than dense official text", async () => {
+  const { readingAge } = await import("../src/readability.ts");
+  const plain = "The council will build new homes. Some will be cheap to rent. It will take five years. The money comes from a loan. People near the river may see tall buildings. Shops may lose some car parks. The plan starts next year.";
+  const dense = "Notwithstanding the aforementioned considerations, the administration's comprehensive infrastructure investment programme necessitates substantial intergovernmental coordination, particularly regarding environmental sustainability obligations and the corresponding fiscal implications for municipal authorities operating within constrained budgetary frameworks.";
+  const a = readingAge(plain)!, b = readingAge(dense + " " + dense)!;
+  assert.ok(a.age < b.age, `${a.age} < ${b.age}`);
+  assert.ok(a.age >= 5 && b.age <= 20);
+  assert.equal(readingAge("Too short."), null);
+});

@@ -1,14 +1,25 @@
 {
   "parameters": {
     "cloud_model": {
-      "defaultValue": { "value": "gemini-3.5-flash-lite" },
+      "defaultValue": {
+        "value": "gemini-3.5-flash-lite"
+      },
       "description": "Cloud Gemini model used when a request runs in the cloud. Change it here without a new release.",
       "valueType": "STRING"
     },
     "device_char_limit": {
-      "defaultValue": { "value": "20000" },
+      "defaultValue": {
+        "value": "20000"
+      },
       "description": "Texts longer than this many characters go straight to the cloud (the on-device model has a smaller input limit).",
       "valueType": "NUMBER"
+    },
+    "claim_grounding": {
+      "defaultValue": {
+        "value": "false"
+      },
+      "description": "Check this claim: true = live Google Search sources (needs a paid Gemini tier); false = a private 'how to check' answer plus search links.",
+      "valueType": "BOOLEAN"
     }
   }
 }

@@ -48,11 +48,13 @@ remoteConfig.settings.minimumFetchIntervalMillis = import.meta.env.DEV ? 0 : 60 
 remoteConfig.defaultConfig = {
   cloud_model: "gemini-3.5-flash-lite",
   device_char_limit: 20000,
+  claim_grounding: false,
 };
 
 export interface Settings {
   cloudModel: string;
   deviceCharLimit: number;
+  claimGrounding: boolean;
 }
 
 export async function loadSettings(): Promise<Settings> {
@@ -66,6 +68,7 @@ export async function loadSettings(): Promise<Settings> {
   return {
     cloudModel: getValue(remoteConfig, "cloud_model").asString(),
     deviceCharLimit: getValue(remoteConfig, "device_char_limit").asNumber(),
+    claimGrounding: getValue(remoteConfig, "claim_grounding").asBoolean(),
   };
 }
 
@@ -87,6 +90,62 @@ export function makeModel(mode: Mode, lang: Lang, cloudModel: string): Generativ
       },
     },
   });
+}
+
+// ---------- Check one claim ----------
+// Two ways, switched by Remote Config ("claim_grounding"):
+//  - grounded: only the chosen sentence goes to Gemini in the cloud with Google Search, and comes back with
+//    sources (needs a paid Gemini tier);
+//  - private (default): a hybrid call, on the device when it can, that says what kind of claim it is and
+//    where the evidence would be, without guessing whether it is true. The page adds search links.
+export interface ClaimCheck {
+  text: string; // Markdown
+  sources: { title: string; uri: string }[];
+  suggestionsHtml?: string; // Google Search suggestions, which must be shown with grounded answers
+  ranOn: "on_device" | "in_cloud";
+  grounded: boolean;
+}
+
+export async function checkClaim(claim: string, lang: Lang, langName: string, cloudModel: string, grounded: boolean, mode: Mode = "prefer_on_device"): Promise<ClaimCheck> {
+  const safeClaim = claim.replace(/"/g, "'");
+  if (grounded) {
+    const model = getGenerativeModel(ai, {
+      model: cloudModel,
+      tools: [{ googleSearch: {} }],
+      generationConfig: { temperature: 0.2, maxOutputTokens: 400 },
+    });
+    const prompt = [
+      "You help a reader check one claim from a political text. Search the web with Google Search.",
+      `Answer in ${langName}. Start with exactly one verdict in bold: Supported, Disputed, Mixed, or Not enough information (translated into ${langName}).`,
+      "Then write 2 or 3 short, plain sentences saying what reliable sources say, with dates when they matter.",
+      "Be neutral: do not take sides, praise or criticise any party or person.",
+      "If the claim is a prediction or an opinion, say it cannot be checked as a fact, and say what evidence exists.",
+      "",
+      `CLAIM: "${safeClaim}"`,
+    ].join("\n");
+    const result = await model.generateContent(prompt);
+    const meta = result.response.candidates?.[0]?.groundingMetadata;
+    const seen = new Set<string>();
+    const sources = (meta?.groundingChunks ?? [])
+      .map((c) => ({ title: c.web?.title ?? c.web?.domain ?? "Source", uri: c.web?.uri ?? "" }))
+      .filter((x) => x.uri && !seen.has(x.uri) && seen.add(x.uri))
+      .slice(0, 5);
+    return { text: result.response.text(), sources, suggestionsHtml: meta?.searchEntryPoint?.renderedContent, ranOn: "in_cloud", grounded: true };
+  }
+  const model = makeModel(mode, lang, cloudModel);
+  const prompt = [
+    "You help a reader check one claim from a political text by themselves. Do not say whether the claim is true or false.",
+    `Answer in ${langName}, in plain words, in this exact format:`,
+    "**Kind of claim:** one short sentence: a fact that can be checked, a prediction, a promise, or an opinion.",
+    "**How to check it:**",
+    "- 2 or 3 bullet points: the kind of official or independent source that would have the evidence (for example a national statistics office, parliament records, the official budget, an independent fact-checker) and exactly what to look for there.",
+    "Be neutral: do not take sides, praise or criticise any party or person.",
+    "",
+    `CLAIM: "${safeClaim}"`,
+  ].join("\n");
+  const result = await model.generateContent(prompt);
+  const ranOn = result.response.inferenceSource === "on_device" ? "on_device" : "in_cloud";
+  return { text: result.response.text(), sources: [], ranOn, grounded: false };
 }
 
 // ---------- Library (Anonymous Auth + Firestore) ----------

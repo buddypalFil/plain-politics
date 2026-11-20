@@ -22,6 +22,14 @@ Two extras make the hybrid choice matter:
   the device can't run it, nothing is sent, and one button removes the details so the cloud can be used safely.
 - **Chrome extension.** One click on the toolbar icon explains the article you are reading, in a side panel next
   to it. The page text goes straight from the page to the panel, with no server in between.
+- **Check this claim.** Next to each claim worth checking, one click says what kind of claim it is (a checkable
+  fact, a prediction, a promise or an opinion) and where the evidence would be, on the device when it can, plus
+  links to Google Fact Check Explorer and Google Search. It never guesses whether a claim is true. A Remote
+  Config switch (`claim_grounding`) turns on live Google Search grounding instead (only the chosen sentence is
+  sent; needs a paid Gemini tier).
+- **Reading age and read aloud.** A gauge shows the reading age of the original and of the explainer (English,
+  worked out on the device, e.g. 14 -> 9), and the explainer can be read aloud with the browser's own voice.
+- **Where it ran.** A small route strip shows the path: Your text -> Privacy guard -> Your device or Cloud.
 
 - **Live site:** https://plain-politics-app.web.app (best in desktop Chrome)
 - **Demo video:** _link added at submission_
@@ -71,7 +79,7 @@ text.
 |---|---|---|
 | **Firebase AI Logic** (hybrid inference) | Runs the explainer on Gemini Nano in Chrome, or on Gemini in the cloud (Gemini Developer API); streams the answer; reports `inferenceSource` for the badge; downloads the on-device model on request | [`src/firebase.ts`](src/firebase.ts) `makeModel()`, [`src/main.ts`](src/main.ts) `generateContentStream()` and `initializeDeviceModel()` |
 | **App Check** (reCAPTCHA through Google Cloud Fraud Defense; debug token locally) | Only this app can call the AI | [`src/firebase.ts`](src/firebase.ts) |
-| **Remote Config** | The cloud model name and the device text limit can change without a new release | [`remoteconfig.template.json`](remoteconfig.template.json) |
+| **Remote Config** | The cloud model name, the device text limit and the claim-check mode can change without a new release | [`remoteconfig.template.json`](remoteconfig.template.json) |
 | **Anonymous Authentication** | A private library for each browser, with no sign-up | [`src/firebase.ts`](src/firebase.ts) |
 | **Cloud Firestore** | Stores saved explainers; rules let each user see only their own, and check every field | [`firestore.rules`](firestore.rules) |
 | **Hosting** | Serves the live site | [`firebase.json`](firebase.json) |
@@ -99,7 +107,7 @@ Needs Node.js 22.18 or newer (the tests run the TypeScript files directly).
 
 ```bash
 npm install
-npm test        # 20 unit tests (routing, privacy guard, prompts, safe Markdown)
+npm test        # 21 unit tests (routing, privacy guard, prompts, reading age, safe Markdown)
 npm run dev     # http://localhost:5173
 ```
 
@@ -151,6 +159,7 @@ src/main.ts           the page: input, streaming output, badge, library
 src/firebase.ts       every Firebase call (App Check, AI Logic, Remote Config, Auth, Firestore)
 src/route.ts          device vs cloud decision (pure, tested)
 src/privacy.ts        privacy guard: finds and removes personal details (pure, tested)
+src/readability.ts    reading age, worked out on the device (pure, tested)
 src/device.ts         asks Chrome whether Gemini Nano is available
 src/prompt.ts         the shared prompt, in three languages
 src/markdown.ts       safe Markdown renderer

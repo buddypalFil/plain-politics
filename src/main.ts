@@ -1,11 +1,14 @@
 // The page: reads the text, picks where to run, streams the explainer,
 // and saves it to the library on request.
 
+import "@fontsource-variable/source-serif-4/opsz.css";
+import "@fontsource-variable/source-serif-4/opsz-italic.css";
 import "./style.css";
-import { buildPrompt, HEADINGS, PERSUADES_HEADING, CONTEXT_HEADING, type Lang, type Level, type Mode } from "./prompt.ts";
+import { buildPrompt, HEADINGS, LANGUAGE_NAMES, PERSUADES_HEADING, CONTEXT_HEADING, type Lang, type Level, type Mode } from "./prompt.ts";
 import { chooseRoute, type DeviceStatus, type RunChoice } from "./route.ts";
 import { renderMarkdown, firstLine, escapeHtml } from "./markdown.ts";
 import { getDeviceStatus, hasPromptApi, warmUpDevice } from "./device.ts";
+import { readingAge } from "./readability.ts";
 import { SAMPLES } from "./samples.ts";
 import { findPersonalData, describeFindings, redact, redactKnown, type Finding } from "./privacy.ts";
 import {
@@ -16,6 +19,7 @@ import {
   listExplainers,
   deleteExplainer,
   hasLibraryUser,
+  checkClaim,
   type Settings,
   type SavedExplainer,
 } from "./firebase.ts";
@@ -44,7 +48,7 @@ const redactBtn = $<HTMLButtonElement>("redact");
 const redactSendBtn = $<HTMLButtonElement>("redact-send");
 const sourceNote = $("source-note");
 
-let settings: Settings = { cloudModel: "gemini-3.5-flash-lite", deviceCharLimit: 20000 };
+let settings: Settings = { cloudModel: "gemini-3.5-flash-lite", deviceCharLimit: 20000, claimGrounding: false };
 let deviceStatus: DeviceStatus = "unavailable";
 let lastResult: { markdown: string; source: "on_device" | "in_cloud"; lang: Lang; text: string; findings: Finding[] } | null = null;
 
@@ -68,6 +72,125 @@ const LEVEL_TEXT: Record<Level, string> = {
   detailed: "Detailed: every section in full.",
 };
 
+function sectionNames(): string[] {
+  const lang = langSel.value as Lang;
+  return [...HEADINGS[lang], ...(mode === "history" ? [PERSUADES_HEADING[lang], CONTEXT_HEADING[lang]] : [])];
+}
+// While the answer streams in, the sections still to come stay as faint outlines.
+function pendingSections(md: string): string {
+  const done = (md.match(/^#{1,3}\s/gm) ?? []).length;
+  const rest = sectionNames().slice(Math.max(done, 1));
+  return rest.length ? `<ol class="ghost pending">${rest.map((h) => `<li>${escapeHtml(h)}</li>`).join("")}</ol>` : "";
+}
+
+// ---------- Where it ran: Your text -> Privacy guard -> Your device / Cloud ----------
+function setRoute(where: "device" | "cloud", running: boolean): void {
+  const route = $("route");
+  route.hidden = false;
+  const state: Record<string, string> = { text: "on", guard: "on", device: where === "device" ? "on" : "off", cloud: where === "cloud" ? "on" : "off" };
+  for (const n of route.querySelectorAll<HTMLElement>(".n")) {
+    const st = state[n.dataset.n!];
+    n.className = `n ${st}${running && n.dataset.n === where ? " active" : ""}`;
+  }
+  const lines = route.querySelectorAll<HTMLElement>(".l");
+  lines[0].className = "l on";
+  lines[1].className = `l ${where === "device" ? "on" : "skip"}`;
+  lines[2].className = `l ${where === "cloud" ? "on" : "skip"}`;
+}
+
+// ---------- Check this claim ----------
+function addClaimButtons(lang: Lang): void {
+  const card = [...output.querySelectorAll(".card")].find((c) => c.querySelector("h3")?.textContent?.trim() === HEADINGS[lang][2]);
+  if (!card) return;
+  for (const li of card.querySelectorAll("li")) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "check-claim";
+    b.textContent = "Check this claim →";
+    li.appendChild(b);
+  }
+}
+output.addEventListener("click", async (e) => {
+  const b = (e.target as HTMLElement).closest<HTMLButtonElement>("button.check-claim");
+  if (!b || b.disabled) return;
+  const li = b.closest("li")!;
+  const claim = (li.firstChild ? [...li.childNodes].filter((n) => n !== b && !(n instanceof HTMLElement && n.classList.contains("claim-drawer"))).map((n) => n.textContent).join("") : "").trim();
+  const lang = (lastResult?.lang ?? langSel.value) as Lang;
+  let drawer = li.querySelector<HTMLElement>(".claim-drawer");
+  if (!drawer) {
+    drawer = document.createElement("div");
+    drawer.className = "claim-drawer";
+    li.appendChild(drawer);
+  }
+  if (findPersonalData(claim).length > 0) {
+    drawer.innerHTML = `<p class="claim-note">This claim includes personal details, so it was not sent anywhere.</p>`;
+    return;
+  }
+  b.disabled = true;
+  drawer.innerHTML = settings.claimGrounding
+    ? `<p class="claim-note">Checking with Google Search… Only this sentence is sent to the cloud.</p>`
+    : `<p class="claim-note">Working out how to check it${deviceStatus === "available" ? ", on your device" : ""}…</p>`;
+  try {
+    // Respect "Run on": "This device only" never falls back to the cloud.
+    const run = runSel.value;
+    const mode = run === "device" ? "only_on_device" : run === "cloud" ? "only_in_cloud" : "prefer_on_device";
+    const r = await checkClaim(claim, lang, LANGUAGE_NAMES[lang], settings.cloudModel, settings.claimGrounding && run !== "device", mode);
+    const list = r.sources.length
+      ? `<ol class="claim-sources">${r.sources.map((x) => `<li><a href="${escapeHtml(x.uri)}" target="_blank" rel="noopener noreferrer">${escapeHtml(x.title)}</a></li>`).join("")}</ol>`
+      : "";
+    const q = encodeURIComponent(claim.slice(0, 300));
+    const links = r.grounded
+      ? ""
+      : `<p class="claim-links">Search it yourself: <a href="https://toolbox.google.com/factcheck/explorer/search/${q}" target="_blank" rel="noopener noreferrer">Google Fact Check Explorer</a> · <a href="https://www.google.com/search?q=${q}" target="_blank" rel="noopener noreferrer">Google Search</a></p>`;
+    const where = r.grounded
+      ? "Only this sentence was sent to the cloud. Check the sources yourself."
+      : r.ranOn === "on_device"
+        ? "🔒 This ran on your device; nothing was sent. The links only open if you click them."
+        : "Only this sentence was sent to the cloud. The links only open if you click them.";
+    drawer.innerHTML = `${renderMarkdown(r.text)}${list}${links}<p class="claim-note">${where}</p><div class="claim-suggest"></div>`;
+    if (r.suggestionsHtml) drawer.querySelector(".claim-suggest")!.attachShadow({ mode: "open" }).innerHTML = r.suggestionsHtml;
+    b.textContent = "Checked ✓";
+  } catch (err) {
+    drawer.innerHTML = `<p class="claim-note">Couldn't check this claim: ${escapeHtml(friendlyError(err))}</p>`;
+    b.disabled = false;
+  }
+});
+
+// ---------- Reading age (worked out on the device) ----------
+function showGauge(original: string, explainer: string, lang: Lang): void {
+  const gauge = $("gauge");
+  const a = lang === "en" ? readingAge(original) : null;
+  const b = lang === "en" ? readingAge(explainer) : null;
+  if (!a || !b) { gauge.hidden = true; return; }
+  const pos = (age: number) => `${((age - 5) / 15) * 100}%`;
+  const e = $("g-exp"), o = $("g-orig");
+  e.style.left = pos(b.age); e.textContent = String(b.age);
+  o.style.left = pos(a.age); o.textContent = String(a.age);
+  $("g-cap").textContent = `Explainer ${b.age} · Original ${a.age}`;
+  gauge.hidden = false;
+}
+
+// ---------- Read aloud (the browser's own voice: free and private) ----------
+const speakBtn = $<HTMLButtonElement>("speak");
+const VOICE_LANG: Record<Lang, string> = { en: "en-GB", it: "it-IT", fr: "fr-FR" };
+function stopSpeaking(): void {
+  if ("speechSynthesis" in window) speechSynthesis.cancel();
+  speakBtn.textContent = "🔊 Read aloud";
+  speakBtn.setAttribute("aria-pressed", "false");
+}
+speakBtn.hidden = !("speechSynthesis" in window);
+speakBtn.addEventListener("click", () => {
+  if (speechSynthesis.speaking) { stopSpeaking(); return; }
+  const text = [...output.querySelectorAll(".card")].map((c) => (c as HTMLElement).innerText.replace(/^\d+\s*/, "")).join(". \n");
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = VOICE_LANG[(lastResult?.lang ?? langSel.value) as Lang];
+  u.rate = 0.95;
+  u.onend = stopSpeaking;
+  speechSynthesis.speak(u);
+  speakBtn.textContent = "⏹ Stop reading";
+  speakBtn.setAttribute("aria-pressed", "true");
+});
+
 function renderChoices(): void {
   for (const b of $("mode-seg").querySelectorAll<HTMLButtonElement>("button")) b.setAttribute("aria-pressed", String(b.dataset.mode === mode));
   for (const b of $("level-seg").querySelectorAll<HTMLButtonElement>("button")) b.setAttribute("aria-pressed", String(b.dataset.level === level));
@@ -77,9 +200,7 @@ function renderChoices(): void {
     mode === "history"
       ? "A speech, declaration or letter from the past. History mode adds how it tries to persuade and its historical context. Try a real speech:"
       : "A news article, a speech, a bill or a manifesto. Or try a made-up sample:";
-  const lang = langSel.value as Lang;
-  const sections = [...HEADINGS[lang], ...(mode === "history" ? [PERSUADES_HEADING[lang], CONTEXT_HEADING[lang]] : [])];
-  $("ghost").innerHTML = sections.map((h) => `<li>${escapeHtml(h)}</li>`).join("");
+  $("ghost").innerHTML = sectionNames().map((h) => `<li>${escapeHtml(h)}</li>`).join("");
   renderSamples();
 }
 $("mode-seg").addEventListener("click", (e) => {
@@ -223,6 +344,8 @@ async function explain(): Promise<void> {
   explainBtn.disabled = true;
   explainBtn.textContent = "Explaining…";
   actions.hidden = true;
+  $("gauge").hidden = true;
+  stopSpeaking();
   routeNote.hidden = false;
   routeNote.textContent = route.reason;
   output.innerHTML = "";
@@ -239,6 +362,7 @@ async function explain(): Promise<void> {
   };
   tick();
   const timer = setInterval(tick, 1000);
+  setRoute(likelyDevice ? "device" : "cloud", true);
   let markdown = "";
   try {
     const model = makeModel(route.mode, lang, settings.cloudModel);
@@ -252,8 +376,9 @@ async function explain(): Promise<void> {
         const result = await model.generateContentStream(prompt);
         for await (const chunk of result.stream) {
           markdown += chunk.text();
-          output.innerHTML = renderMarkdown(markdown);
+          output.innerHTML = renderMarkdown(markdown) + pendingSections(markdown);
         }
+        output.innerHTML = renderMarkdown(markdown);
         final = await result.response;
         if (attempt > 1) routeNote.textContent = `${route.reason} (Google's cloud was busy; it worked on try ${attempt}.)`;
         break;
@@ -267,6 +392,9 @@ async function explain(): Promise<void> {
     const source = final.inferenceSource === "on_device" ? "on_device" : "in_cloud";
     const secs = ((performance.now() - started) / 1000).toFixed(1);
     showBadge(source, secs);
+    setRoute(source === "on_device" ? "device" : "cloud", false);
+    showGauge(text, output.innerText, lang);
+    addClaimButtons(lang);
     lastResult = { markdown, source, lang, text, findings };
     actions.hidden = false;
     saveBtn.disabled = false;
@@ -274,6 +402,7 @@ async function explain(): Promise<void> {
   } catch (e) {
     if (!markdown) output.innerHTML = "";
     badge.hidden = true;
+    $("route").hidden = true;
     showError(friendlyError(e));
   } finally {
     clearInterval(timer);
@@ -349,6 +478,8 @@ async function renderLibrary(): Promise<void> {
     li.querySelector(".link")!.addEventListener("click", () => {
       output.innerHTML = renderMarkdown(item.markdown);
       badge.hidden = true;
+      $("route").hidden = true;
+      $("gauge").hidden = true;
       routeNote.hidden = false;
       routeNote.textContent = `From your library (${where}).`;
       actions.hidden = true;
