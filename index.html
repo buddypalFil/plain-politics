@@ -25,10 +25,15 @@
     <section class="panel" aria-labelledby="in-title">
       <h2 id="in-title">1. Paste a political text</h2>
       <p class="hint">A news article, a speech, a bill or a manifesto. Or try a made-up sample:</p>
+      <p id="source-note" class="hint small source-note" hidden></p>
       <div id="samples" class="chips"></div>
       <label class="sr-only" for="input">Text to explain</label>
       <textarea id="input" rows="12" placeholder="Paste the text here…"></textarea>
       <div class="count"><span id="char-count">0</span> characters</div>
+      <div id="privacy" class="privacy" role="status">
+        <span id="privacy-text">🛡️ Privacy guard is on: personal details never go to the cloud.</span>
+        <button id="redact" class="link-btn" type="button" hidden>Remove them</button>
+      </div>
 
       <div class="options">
         <label>Detail
@@ -65,6 +70,7 @@
       </div>
       <p id="route-note" class="hint small" hidden></p>
       <div id="error" class="error" hidden></div>
+      <button id="redact-send" class="secondary" type="button" hidden>Remove personal details and continue</button>
       <div id="output" class="output">
         <p class="empty">Your explainer will appear here: a one-sentence summary, the main points, claims worth checking, who it affects, words explained, and questions to ask.</p>
       </div>

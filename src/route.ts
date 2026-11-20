@@ -10,14 +10,36 @@ export interface RouteInput {
   chars: number;
   deviceCharLimit: number;
   deviceStatus: DeviceStatus;
+  // True when the privacy guard found personal details (email, phone, address…).
+  personal?: boolean;
 }
 
 export type Route =
   | { ok: true; mode: Mode; reason: string }
-  | { ok: false; reason: string };
+  | { ok: false; reason: string; privacy?: true };
 
 export function chooseRoute(input: RouteInput): Route {
-  const { choice, chars, deviceCharLimit, deviceStatus } = input;
+  const { choice, chars, deviceCharLimit, deviceStatus, personal } = input;
+
+  // Privacy guard: a text with personal details never goes to the cloud.
+  // It runs on this device only (no cloud fallback), or the details must be removed first.
+  if (personal) {
+    const deviceReady = deviceStatus === "available" && chars <= deviceCharLimit;
+    if (deviceReady && choice !== "cloud") {
+      return { ok: true, mode: "only_on_device", reason: "Personal details found, so this stays on your device. Nothing is sent to the cloud." };
+    }
+    const why =
+      choice === "cloud"
+        ? "you chose the cloud"
+        : chars > deviceCharLimit
+          ? "it is too long for the on-device model"
+          : "on-device AI isn't ready in this browser";
+    return {
+      ok: false,
+      privacy: true,
+      reason: `This text has personal details, and ${why}, so it was not sent anywhere. Remove the personal details to use the cloud${choice === "cloud" ? ", or choose Auto to keep it on your device" : ""}.`,
+    };
+  }
 
   if (choice === "cloud") {
     return { ok: true, mode: "only_in_cloud", reason: "You chose the cloud." };

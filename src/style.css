@@ -111,3 +111,19 @@ button.secondary:hover { border-color: var(--accent); }
 .foot { color: var(--muted); font-size: .85rem; padding-top: 10px; padding-bottom: 30px; }
 .foot p { margin: 4px 0; }
 .foot a { color: var(--accent); }
+
+/* Privacy guard */
+.privacy { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; font-size: .86rem; color: var(--accent); }
+.privacy.found { color: var(--warn); background: var(--warn-soft); padding: 8px 12px; border-radius: 10px; }
+.link-btn { border: 0; background: none; color: inherit; font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; padding: 0; }
+.source-note { color: var(--accent); font-weight: 600; }
+
+/* Inside the Chrome extension's side panel */
+.embed .grid { grid-template-columns: minmax(0, 1fr); gap: 12px; padding-top: 12px; }
+.embed .tagline, .embed .foot p:nth-child(3) { display: none; }
+.embed .top-inner { padding-top: 10px; padding-bottom: 10px; }
+.embed .logo { width: 34px; height: 34px; border-radius: 9px; font-size: .85rem; }
+.embed h1 { font-size: 1.1rem; }
+.embed .panel { padding: 14px; }
+.embed textarea { min-height: 120px; }
+.embed .options { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }

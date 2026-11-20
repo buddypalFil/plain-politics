@@ -14,6 +14,14 @@ with six parts:
 
 It works in English, Italian and French, and never takes sides or tells anyone how to vote.
 
+Two extras make the hybrid choice matter:
+
+- **Privacy guard.** If a text holds personal details (a name given as "my name is…", a home address, an email,
+  a phone number, a postcode, a card, bank or National Insurance number), it only ever runs on the device. If
+  the device can't run it, nothing is sent, and one button removes the details so the cloud can be used safely.
+- **Chrome extension.** One click on the toolbar icon explains the article you are reading, in a side panel next
+  to it. The page text goes straight from the page to the panel, with no server in between.
+
 - **Live site:** https://plain-politics-app.web.app (best in desktop Chrome)
 - **Demo video:** _link added at submission_
 - Built for the Firebase **#BuildHybridAI 2026** hackathon (web / Chrome track).
@@ -35,6 +43,7 @@ Firebase AI Logic as the hybrid `mode`:
 
 | Situation | What happens | Firebase AI Logic mode |
 |---|---|---|
+| Personal details found (privacy guard) | Device only; if the device can't run it, nothing is sent | `only_on_device` |
 | "Auto", on-device model ready | Runs on the device; cloud only if the device fails | `prefer_on_device` |
 | "Auto", model not downloaded yet | Cloud answers now; the user can download the model with one button | `prefer_on_device` |
 | "Auto", text longer than the device limit | Straight to the cloud | `only_in_cloud` |
@@ -60,7 +69,12 @@ same six sections.
 
 - **On the device**, the text stays on the computer.
 - **In the cloud**, the text is sent to Google's Gemini API through Firebase AI Logic, and the page says so.
-- The library saves the explainer and the first 280 characters of the text, never the whole text.
+- **Privacy guard** ([`src/privacy.ts`](src/privacy.ts), unit-tested): finds personal details before anything is
+  sent. Such a text stays on the device; if it can't, the app explains why and offers to replace the details with
+  labels like `[email]` or `[address]` first. Political texts full of numbers, dates and money are not flagged
+  (cards need a valid Luhn check, phones a real dialling format).
+- The library saves the explainer and the first 280 characters of the text, never the whole text, and personal
+  details are replaced with labels before anything is saved.
 - The model's answer is shown through a small renderer ([`src/markdown.ts`](src/markdown.ts)) that escapes all
   HTML first, so model output can't inject markup or scripts.
 - The prompt tells the model to stay neutral and to use only what is in the text, and the footer reminds readers
@@ -73,7 +87,7 @@ Needs Node.js 22.18 or newer (the tests run the TypeScript files directly).
 
 ```bash
 npm install
-npm test        # 10 unit tests (routing, prompt, safe Markdown)
+npm test        # 17 unit tests (routing, privacy guard, prompt, safe Markdown)
 npm run dev     # http://localhost:5173
 ```
 
@@ -97,17 +111,38 @@ In desktop Chrome, turn on `chrome://flags/#prompt-api-for-gemini-nano-multimoda
 site and press **Set up on-device AI**. Once the model has downloaded, the top of the page says
 "On-device AI ready" and explainers show "Ran on your device".
 
+## Chrome extension
+
+The [`extension/`](extension) folder is a small Manifest V3 extension. It shows the live site in Chrome's side
+panel and hands it the text of the page you are reading.
+
+To install it (it is not on the Chrome Web Store):
+
+1. Download or clone this repo.
+2. Open `chrome://extensions` and turn on **Developer mode** (top right).
+3. Click **Load unpacked** and choose the `extension` folder.
+4. On any article, click the **PP** icon in the toolbar, or right-click the page (or a selection) and choose
+   **Explain this page with Plain Politics**.
+
+How it works: clicking the icon gives the extension Chrome's one-time permission for that tab (`activeTab`), so it
+asks for no access to your browsing in general. It reads the article text (or your selection) and passes it to the
+side panel with `postMessage`; the app only accepts text from a `chrome-extension://` sender. The panel's iframe is
+allowed to use Chrome's built-in model (`allow="language-model"`), so the explainer still runs on the device when
+it can.
+
 ## Project layout
 
 ```
 src/main.ts           the page: input, streaming output, badge, library
 src/firebase.ts       every Firebase call (App Check, AI Logic, Remote Config, Auth, Firestore)
 src/route.ts          device vs cloud decision (pure, tested)
+src/privacy.ts        privacy guard: finds and removes personal details (pure, tested)
 src/device.ts         asks Chrome whether Gemini Nano is available
 src/prompt.ts         the shared prompt, in three languages
 src/markdown.ts       safe Markdown renderer
 src/samples.ts        made-up sample texts
-tests/core.test.ts    unit tests
+tests/                unit tests
+extension/            Chrome extension (side panel, right-click menu)
 firestore.rules       database rules
 remoteconfig.template.json
 ```

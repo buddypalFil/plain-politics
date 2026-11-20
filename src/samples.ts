@@ -39,4 +39,19 @@ Part 3 allows local authorities to create "designated parking bays". Scooters le
 
 Part 4 requires riders to be at least 16 years old and to hold a provisional or full driving licence. It does not require riders to wear a helmet, but the Secretary of State may introduce this by regulations after a review in 2028.`,
   },
+  {
+    label: "Letter to my MP",
+    text: `Draft letter to my MP (fictional: the names, numbers and address are made up)
+
+Dear Ms Okafor,
+
+My name is Jordan Patel and I live at 14 Mill Lane, Northvale NV1 4QX. I am writing about the plan to cut the number 40 bus route, which I take to work every day. The council's consultation says the route carries "fewer than 300 passengers a day", but the operator's own figures from last year showed 1,150.
+
+If the route is cut, my journey to the hospital where I work will go from 25 minutes to over an hour. Could you ask the council which figures they used, and whether disabled passengers were consulted as the Equality Act requires?
+
+You can reach me at jordan.patel@example.com or on 07700 900123.
+
+Yours sincerely,
+Jordan Patel`,
+  },
 ];

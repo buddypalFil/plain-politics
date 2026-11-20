@@ -7,6 +7,7 @@ import { chooseRoute, type DeviceStatus, type RunChoice } from "./route.ts";
 import { renderMarkdown, firstLine, escapeHtml } from "./markdown.ts";
 import { getDeviceStatus, hasPromptApi } from "./device.ts";
 import { SAMPLES } from "./samples.ts";
+import { findPersonalData, describeFindings, redact, redactKnown, type Finding } from "./privacy.ts";
 import {
   isConfigured,
   loadSettings,
@@ -38,10 +39,15 @@ const actions = $("actions");
 const saveBtn = $<HTMLButtonElement>("save");
 const copyBtn = $<HTMLButtonElement>("copy");
 const libraryList = $("library");
+const privacyBox = $("privacy");
+const privacyText = $("privacy-text");
+const redactBtn = $<HTMLButtonElement>("redact");
+const redactSendBtn = $<HTMLButtonElement>("redact-send");
+const sourceNote = $("source-note");
 
 let settings: Settings = { cloudModel: "gemini-3.5-flash-lite", deviceCharLimit: 20000 };
 let deviceStatus: DeviceStatus = "unavailable";
-let lastResult: { markdown: string; source: "on_device" | "in_cloud"; lang: Lang; text: string } | null = null;
+let lastResult: { markdown: string; source: "on_device" | "in_cloud"; lang: Lang; text: string; findings: Finding[] } | null = null;
 
 // ---------- Samples and character count ----------
 for (const s of SAMPLES) {
@@ -51,12 +57,39 @@ for (const s of SAMPLES) {
   b.textContent = s.label;
   b.addEventListener("click", () => {
     input.value = s.text;
+    sourceNote.hidden = true;
     updateCount();
+    updatePrivacy();
   });
   $("samples").appendChild(b);
 }
 const updateCount = () => (charCount.textContent = input.value.length.toLocaleString("en-GB"));
-input.addEventListener("input", updateCount);
+input.addEventListener("input", () => {
+  updateCount();
+  updatePrivacy();
+});
+
+// ---------- Privacy guard ----------
+function updatePrivacy(): void {
+  const found = findPersonalData(input.value);
+  privacyBox.classList.toggle("found", found.length > 0);
+  redactBtn.hidden = found.length === 0;
+  privacyText.textContent =
+    found.length === 0
+      ? "🛡️ Privacy guard is on: personal details never go to the cloud."
+      : `🛡️ Found ${describeFindings(found)}. This text will only run on your device.`;
+}
+redactBtn.addEventListener("click", () => {
+  input.value = redact(input.value);
+  updateCount();
+  updatePrivacy();
+});
+redactSendBtn.addEventListener("click", () => {
+  input.value = redact(input.value);
+  updateCount();
+  updatePrivacy();
+  explain();
+});
 
 // ---------- On-device status ----------
 async function refreshDevice(): Promise<void> {
@@ -116,14 +149,17 @@ async function explain(): Promise<void> {
 
   const lang = langSel.value as Lang;
   const detail = detailSel.value as Detail;
+  const findings = findPersonalData(text);
   const route = chooseRoute({
     choice: runSel.value as RunChoice,
     chars: text.length,
     deviceCharLimit: settings.deviceCharLimit,
     deviceStatus,
+    personal: findings.length > 0,
   });
   if (!route.ok) {
     showError(route.reason);
+    redactSendBtn.hidden = !route.privacy;
     return;
   }
 
@@ -165,7 +201,7 @@ async function explain(): Promise<void> {
     const source = final.inferenceSource === "on_device" ? "on_device" : "in_cloud";
     const secs = ((performance.now() - started) / 1000).toFixed(1);
     showBadge(source, secs);
-    lastResult = { markdown, source, lang, text };
+    lastResult = { markdown, source, lang, text, findings };
     actions.hidden = false;
     saveBtn.disabled = false;
     saveBtn.textContent = "Save to my library";
@@ -199,11 +235,12 @@ saveBtn.addEventListener("click", async () => {
   saveBtn.disabled = true;
   try {
     await saveExplainer({
-      title: firstLine(lastResult.markdown),
-      snippet: lastResult.text.slice(0, 280),
+      // Personal details never reach the library either.
+      title: redactKnown(firstLine(lastResult.markdown), lastResult.findings),
+      snippet: redact(lastResult.text, lastResult.findings).slice(0, 280),
       lang: lastResult.lang,
       source: lastResult.source,
-      markdown: lastResult.markdown,
+      markdown: redactKnown(lastResult.markdown, lastResult.findings),
     });
     saveBtn.textContent = "Saved ✓";
     await renderLibrary();
@@ -283,7 +320,27 @@ function showError(msg: string): void {
 }
 function hideError(): void {
   errorBox.hidden = true;
+  redactSendBtn.hidden = true;
 }
+
+// ---------- Chrome extension side panel ----------
+// The extension shows this page in its side panel (?embed=1) and sends the text of the
+// page you are reading with postMessage. Nothing goes through a server on the way.
+const embedded = new URLSearchParams(location.search).get("embed") === "1";
+if (embedded) document.body.classList.add("embed");
+window.addEventListener("message", (e: MessageEvent) => {
+  if (!e.origin.startsWith("chrome-extension://")) return;
+  const d = e.data as { type?: string; text?: unknown; title?: unknown; autoRun?: unknown };
+  if (d?.type !== "pp-text" || typeof d.text !== "string") return;
+  input.value = d.text.slice(0, 60000);
+  (e.source as Window | null)?.postMessage({ type: "pp-got", n: input.value.length }, e.origin);
+  const title = typeof d.title === "string" ? d.title.slice(0, 120) : "";
+  sourceNote.textContent = title ? `From the page: ${title}` : "From the page you are reading";
+  sourceNote.hidden = false;
+  updateCount();
+  updatePrivacy();
+  if (d.autoRun === true) void explain();
+});
 
 // ---------- Start ----------
 (async () => {
@@ -291,4 +348,5 @@ function hideError(): void {
   settings = await loadSettings();
   await refreshDevice();
   await renderLibrary();
+  if (embedded && window.parent !== window) window.parent.postMessage({ type: "pp-ready" }, "*");
 })();
