@@ -59,7 +59,37 @@ test("firstLine skips headings", () => {
 });
 
 test("prompt uses the headings of the chosen language", () => {
-  const p = buildPrompt("Some text", "it", "full");
+  const p = buildPrompt("Some text", "it");
   for (const h of HEADINGS.it) assert.ok(p.includes(`## ${h}`));
   assert.ok(p.includes("Italian"));
+});
+
+test("speed vs detail changes the length, never the six sections", () => {
+  const quick = buildPrompt("Some text", "en", "quick");
+  const balanced = buildPrompt("Some text", "en", "balanced");
+  const detailed = buildPrompt("Some text", "en", "detailed");
+  for (const p of [quick, balanced, detailed]) for (const h of HEADINGS.en) assert.ok(p.includes(`## ${h}`));
+  assert.ok(quick.includes("under 12 words") && quick.includes("Exactly 1 bullet point"));
+  assert.ok(balanced.includes("under 20 words") && balanced.includes("2 to 4 bullet points"));
+  assert.ok(detailed.includes("3 to 6 bullet points"));
+  assert.ok(!detailed.includes("under 12 words") && !detailed.includes("under 20 words"));
+});
+
+test("History mode adds persuasion and a clearly labelled context section", () => {
+  const today = buildPrompt("Some text", "en");
+  const hist = buildPrompt("Some text", "it", "balanced", "history");
+  assert.ok(!today.includes("Historical context") && !today.includes("persuade"));
+  assert.ok(hist.includes("## Come cerca di convincere"));
+  assert.ok(hist.includes("## Contesto storico"));
+  assert.ok(hist.includes("eight sections"));
+  assert.ok(hist.includes("non dal testo"));
+  assert.ok(hist.includes("do not judge whether the cause was right"));
+});
+
+test("italics render safely and leave snake_case words alone", () => {
+  assert.ok(renderMarkdown("_From general knowledge. Check it._").includes("<em>From general knowledge. Check it.</em>"));
+  assert.ok(renderMarkdown("a *quiet* word").includes("<em>quiet</em>"));
+  assert.ok(!renderMarkdown("snake_case_name here").includes("<em>"));
+  assert.ok(renderMarkdown("**bold** stays").includes("<strong>bold</strong>"));
+  assert.ok(!renderMarkdown("_<script>x</script>_").includes("<script>"));
 });

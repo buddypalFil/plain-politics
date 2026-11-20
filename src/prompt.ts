@@ -2,7 +2,11 @@
 // device and in the cloud, so both give the same kind of answer.
 
 export type Lang = "en" | "it" | "fr";
-export type Detail = "short" | "full";
+// Speed vs detail. Gemini Nano writes more slowly than the cloud, so shorter
+// answers arrive sooner on the device (measured on a MacBook: Balanced 15 s, Detailed 25 s).
+export type Level = "quick" | "balanced" | "detailed";
+// "today": news, bills, manifestos. "history": speeches and documents from the past.
+export type Mode = "today" | "history";
 
 export const LANGUAGE_NAMES: Record<Lang, string> = {
   en: "English",
@@ -17,32 +21,70 @@ export const HEADINGS: Record<Lang, string[]> = {
   fr: ["En une phrase", "Ce que dit le texte", "Affirmations à vérifier", "Qui est concerné", "Mots expliqués", "Questions à se poser"],
 };
 
-export function buildPrompt(text: string, lang: Lang, detail: Detail): string {
+// Two more sections in History mode.
+export const PERSUADES_HEADING: Record<Lang, string> = {
+  en: "How it tries to persuade",
+  it: "Come cerca di convincere",
+  fr: "Comment il cherche à convaincre",
+};
+export const CONTEXT_HEADING: Record<Lang, string> = {
+  en: "Historical context",
+  it: "Contesto storico",
+  fr: "Contexte historique",
+};
+const CONTEXT_NOTE: Record<Lang, string> = {
+  en: "From the AI's general knowledge, not from the text. Check it.",
+  it: "Dalle conoscenze generali dell'IA, non dal testo. Verificalo.",
+  fr: "Tiré des connaissances générales de l'IA, pas du texte. À vérifier.",
+};
+
+const LEVELS: Record<Level, { bullets: string; terms: string; limit: string | null }> = {
+  quick: { bullets: "Exactly 1 bullet point", terms: "1 bullet point", limit: "- Keep every bullet point under 12 words." },
+  balanced: { bullets: "2 to 4 bullet points", terms: "Up to 3 bullet points", limit: "- Keep every bullet point under 20 words." },
+  detailed: { bullets: "3 to 6 bullet points", terms: "Bullet points", limit: null },
+};
+
+export function buildPrompt(text: string, lang: Lang, level: Level = "balanced", mode: Mode = "today"): string {
   const h = HEADINGS[lang];
-  const bullets = detail === "short" ? "2 to 3" : "3 to 6";
+  const { bullets, terms, limit } = LEVELS[level];
+  const history = mode === "history";
   return [
-    "You explain political texts (news articles, speeches, bills, manifestos) to ordinary readers in plain words.",
+    history
+      ? "You explain historical political texts (speeches, declarations, letters, laws from the past) to students and ordinary readers in plain words."
+      : "You explain political texts (news articles, speeches, bills, manifestos) to ordinary readers in plain words.",
     "Rules:",
     "- Be neutral. Do not take sides, praise or criticise anyone, or say how to vote.",
-    "- Use only what is in the text. Never add facts, numbers or names that are not in it.",
+    history
+      ? `- Use only what is in the text, except in the "${CONTEXT_HEADING[lang]}" section. Never add facts, numbers or names that are not in it.`
+      : "- Use only what is in the text. Never add facts, numbers or names that are not in it.",
     "- Copy every number, percentage and amount exactly as the text writes it. Never work out new numbers.",
     "- If the text does not say something, write that it does not say it.",
     "- Use short sentences and everyday words.",
+    ...(limit ? [limit] : []),
     `- Write the whole answer in ${LANGUAGE_NAMES[lang]}.`,
     "",
-    "Answer in Markdown with exactly these six sections, in this order:",
+    `Answer in Markdown with exactly these ${history ? "eight" : "six"} sections, in this order:`,
     `## ${h[0]}`,
     "One sentence a 12-year-old would understand.",
     `## ${h[1]}`,
-    `${bullets} bullet points with the main points.`,
+    `${bullets} with the main points.`,
     `## ${h[2]}`,
-    `${bullets} bullet points. Each one: a claim from the text, then why a reader should check it.`,
+    `${bullets}. Each one: a claim from the text, then why a reader should check it.`,
     `## ${h[3]}`,
-    "Bullet points: which groups of people this affects and how, as the text describes it.",
+    `${bullets}: which groups of people this affects and how, as the text describes it.`,
     `## ${h[4]}`,
-    "Bullet points: **term**: its plain meaning. Only terms that appear in the text.",
+    `${terms}: **term**: its plain meaning. Only terms that appear in the text.`,
     `## ${h[5]}`,
-    `${bullets} bullet points: fair questions a reader could ask to understand it better.`,
+    `${bullets}: fair questions a reader could ask to understand it better.`,
+    ...(history
+      ? [
+          `## ${PERSUADES_HEADING[lang]}`,
+          `${bullets}. Each one: a technique the speaker uses (for example repetition, emotional words, "us versus them", appeals to fear, hope or duty), with a short quote from the text. Describe the technique only; do not judge whether the cause was right or wrong.`,
+          `## ${CONTEXT_HEADING[lang]}`,
+          `First line, in italics: _${CONTEXT_NOTE[lang]}_`,
+          `Then ${bullets.toLowerCase()} of well-known background: when and where this was said or written, what was happening at the time, and what happened next. This is the only section where you may use knowledge from outside the text. Stay neutral and factual. If you are not sure of something, leave it out.`,
+        ]
+      : []),
     "",
     "TEXT:",
     '"""',

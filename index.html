@@ -22,26 +22,68 @@
   </header>
 
   <main class="wrap grid">
-    <section class="panel" aria-labelledby="in-title">
-      <h2 id="in-title">1. Paste a political text</h2>
-      <p class="hint">A news article, a speech, a bill or a manifesto. Or try a made-up sample:</p>
+    <!-- Only shown inside the Chrome extension's side panel. -->
+    <section id="page-card" class="panel page-card embed-only" aria-label="The page you are reading">
+      <div id="page-empty">
+        <h2>Explain the page you're reading</h2>
+        <p class="hint">Plain Politics reads the article next to this panel and explains it in plain words, on your device when it can.</p>
+        <button id="pp-page" class="primary" type="button">Explain this page</button>
+        <div class="page-more">
+          <button id="pp-sel" class="secondary" type="button">Explain selected text</button>
+          <button id="show-input" class="link-btn" type="button">or paste your own</button>
+        </div>
+      </div>
+      <div id="page-source" class="page-source" hidden>
+        <span class="src-icon" aria-hidden="true">📄</span>
+        <div class="src-text">
+          <div class="src-label">Source</div>
+          <div id="src-title" class="src-title"></div>
+          <div id="src-meta" class="src-meta"></div>
+        </div>
+        <div class="src-actions">
+          <button id="reread" class="link-btn" type="button" title="Read the page in this tab again">Read again</button>
+          <button id="edit-text" class="link-btn" type="button">Edit</button>
+        </div>
+      </div>
+      <p id="page-status" class="page-status" role="status" hidden></p>
+    </section>
+
+    <section id="input-panel" class="panel" aria-labelledby="in-title">
+      <h2 id="in-title">Your text</h2>
+
+      <div id="choices" class="choices">
+        <div class="choice">
+          <span class="choice-label" id="mode-label">Kind of text</span>
+          <div class="seg" role="group" aria-labelledby="mode-label" id="mode-seg">
+            <button type="button" data-mode="today" aria-pressed="true">🗞️ Today</button>
+            <button type="button" data-mode="history" aria-pressed="false">📜 History</button>
+          </div>
+        </div>
+        <div class="choice">
+          <span class="choice-label" id="level-label">Speed vs detail</span>
+          <div class="seg" role="group" aria-labelledby="level-label" id="level-seg">
+            <button type="button" data-level="quick" aria-pressed="false">Quick</button>
+            <button type="button" data-level="balanced" aria-pressed="true">Balanced</button>
+            <button type="button" data-level="detailed" aria-pressed="false">Detailed</button>
+          </div>
+        </div>
+        <p id="choice-hint" class="choice-hint"></p>
+      </div>
+
+      <p id="mode-hint" class="hint">A news article, a speech, a bill or a manifesto. Or try a made-up sample:</p>
       <p id="source-note" class="hint small source-note" hidden></p>
       <div id="samples" class="chips"></div>
       <label class="sr-only" for="input">Text to explain</label>
-      <textarea id="input" rows="12" placeholder="Paste the text here…"></textarea>
-      <div class="count"><span id="char-count">0</span> characters</div>
-      <div id="privacy" class="privacy" role="status">
-        <span id="privacy-text">🛡️ Privacy guard is on: personal details never go to the cloud.</span>
-        <button id="redact" class="link-btn" type="button" hidden>Remove them</button>
+      <textarea id="input" rows="11" placeholder="Paste the text here…"></textarea>
+      <div class="under-input">
+        <div id="privacy" class="privacy" role="status">
+          <span id="privacy-text">🛡️ Privacy guard is on: personal details never go to the cloud.</span>
+          <button id="redact" class="link-btn" type="button" hidden>Remove them</button>
+        </div>
+        <div class="count"><span id="char-count">0</span> characters</div>
       </div>
 
       <div class="options">
-        <label>Detail
-          <select id="detail">
-            <option value="short">Short</option>
-            <option value="full" selected>Full</option>
-          </select>
-        </label>
         <label>Language
           <select id="lang">
             <option value="en" selected>English</option>
@@ -63,16 +105,22 @@
       <button id="setup-device" class="secondary" type="button" hidden>Set up on-device AI</button>
     </section>
 
-    <section class="panel" aria-labelledby="out-title" aria-live="polite">
+    <section id="out-panel" class="panel" aria-labelledby="out-title" aria-live="polite">
       <div class="out-head">
-        <h2 id="out-title">2. The explainer</h2>
+        <h2 id="out-title">The explainer</h2>
         <div id="badge" class="badge" hidden></div>
       </div>
       <p id="route-note" class="hint small" hidden></p>
       <div id="error" class="error" hidden></div>
       <button id="redact-send" class="secondary" type="button" hidden>Remove personal details and continue</button>
       <div id="output" class="output">
-        <p class="empty">Your explainer will appear here: a one-sentence summary, the main points, claims worth checking, who it affects, words explained, and questions to ask.</p>
+        <div class="empty">
+          <p>Your explainer will appear here, in plain words:</p>
+          <ol id="ghost" class="ghost">
+            <li>In one sentence</li><li>What it says</li><li>Claims worth checking</li>
+            <li>Who it affects</li><li>Words explained</li><li>Questions to ask</li>
+          </ol>
+        </div>
       </div>
       <div id="actions" class="actions" hidden>
         <button id="save" class="secondary" type="button">Save to my library</button>

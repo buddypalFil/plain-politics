@@ -29,3 +29,19 @@ export async function getDeviceStatus(lang: Lang): Promise<DeviceStatus> {
     return "unavailable";
   }
 }
+
+// Loads the on-device model into memory in the background, so the first explainer
+// starts as fast as later ones. Only when the model is already downloaded.
+export async function warmUpDevice(lang: Lang): Promise<void> {
+  const LM = (globalThis as { LanguageModel?: { create?(o: unknown): Promise<{ destroy(): void }> } }).LanguageModel;
+  if (!LM?.create) return;
+  try {
+    const s = await LM.create({
+      expectedInputs: [{ type: "text", languages: ["en", lang] }],
+      expectedOutputs: [{ type: "text", languages: [lang] }],
+    });
+    s.destroy();
+  } catch {
+    // Not important: the real request will load the model anyway.
+  }
+}

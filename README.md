@@ -12,7 +12,8 @@ with six parts:
 5. **Words explained**: jargon from the text, in everyday words.
 6. **Questions to ask**: fair questions that help a reader understand more.
 
-It works in English, Italian and French, and never takes sides or tells anyone how to vote.
+It works in English, Italian and French, and never takes sides or tells anyone how to vote. A **History mode**
+turns it into a study tool for speeches from the past (see below).
 
 Two extras make the hybrid choice matter:
 
@@ -52,7 +53,17 @@ Firebase AI Logic as the hybrid `mode`:
 | "Cloud only" | Cloud | `only_in_cloud` |
 
 The same prompt ([`src/prompt.ts`](src/prompt.ts)) is used on the device and in the cloud, so both give the
-same six sections.
+same sections. A **Speed vs detail** choice sets how long the answer is, which matters on the device because
+Gemini Nano writes more slowly than the cloud. Measured on a MacBook with a page-long text: **Quick 8 s, Balanced
+15 s, Detailed 25 s**, with the first words on screen after about 2 s (the answer streams in). The cloud takes a
+few seconds at any level. When the model is already downloaded, the page loads it into memory in the background,
+so the first run is as quick as later ones.
+
+**Two modes.** *Today* is for news, bills and manifestos. *History* is for speeches and documents from the past
+(samples: Lincoln 1863, Pankhurst 1913, Roosevelt 1941, all public domain). It adds two sections: **How it tries to
+persuade** (techniques such as repetition or "us versus them", each with a short quote, without judging the
+cause) and **Historical context**, clearly marked as coming from the AI's general knowledge rather than from the
+text.
 
 ## Firebase products used
 
@@ -79,7 +90,8 @@ same six sections.
   HTML first, so model output can't inject markup or scripts.
 - The prompt tells the model to stay neutral and to use only what is in the text, and the footer reminds readers
   that AI can make mistakes.
-- The samples on the page ([`src/samples.ts`](src/samples.ts)) are made up, so no real politician is quoted.
+- The modern samples on the page ([`src/samples.ts`](src/samples.ts)) are made up, so no living politician is
+  quoted; the History samples are real speeches in the public domain.
 
 ## Run it yourself
 
@@ -87,7 +99,7 @@ Needs Node.js 22.18 or newer (the tests run the TypeScript files directly).
 
 ```bash
 npm install
-npm test        # 17 unit tests (routing, privacy guard, prompt, safe Markdown)
+npm test        # 20 unit tests (routing, privacy guard, prompts, safe Markdown)
 npm run dev     # http://localhost:5173
 ```
 
@@ -107,9 +119,11 @@ The repo is already connected to the Firebase project `plain-politics-app` (see
 
 ### Trying the on-device model
 
-In desktop Chrome, turn on `chrome://flags/#prompt-api-for-gemini-nano-multimodal-input`, restart Chrome, open the
-site and press **Set up on-device AI**. Once the model has downloaded, the top of the page says
-"On-device AI ready" and explainers show "Ran on your device".
+On-device AI is built into desktop Chrome 148 and newer (Windows 10/11, macOS 13+, Linux, Chromebook Plus), with no
+flags. Chrome needs 22 GB of free disk space and either a GPU with more than 4 GB of memory or 16 GB of RAM. Open the
+site and press **Set up on-device AI** once to download Gemini Nano; after that the top of the page says
+"On-device AI ready" and explainers show "Ran on your device". On older Chrome versions, turn on
+`chrome://flags/#prompt-api-for-gemini-nano-multimodal-input` and restart.
 
 ## Chrome extension
 

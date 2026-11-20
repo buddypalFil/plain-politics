@@ -2,10 +2,10 @@
 // and saves it to the library on request.
 
 import "./style.css";
-import { buildPrompt, type Detail, type Lang } from "./prompt.ts";
+import { buildPrompt, HEADINGS, PERSUADES_HEADING, CONTEXT_HEADING, type Lang, type Level, type Mode } from "./prompt.ts";
 import { chooseRoute, type DeviceStatus, type RunChoice } from "./route.ts";
 import { renderMarkdown, firstLine, escapeHtml } from "./markdown.ts";
-import { getDeviceStatus, hasPromptApi } from "./device.ts";
+import { getDeviceStatus, hasPromptApi, warmUpDevice } from "./device.ts";
 import { SAMPLES } from "./samples.ts";
 import { findPersonalData, describeFindings, redact, redactKnown, type Finding } from "./privacy.ts";
 import {
@@ -24,7 +24,6 @@ const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as 
 
 const input = $<HTMLTextAreaElement>("input");
 const charCount = $("char-count");
-const detailSel = $<HTMLSelectElement>("detail");
 const langSel = $<HTMLSelectElement>("lang");
 const runSel = $<HTMLSelectElement>("run");
 const explainBtn = $<HTMLButtonElement>("explain");
@@ -49,19 +48,74 @@ let settings: Settings = { cloudModel: "gemini-3.5-flash-lite", deviceCharLimit:
 let deviceStatus: DeviceStatus = "unavailable";
 let lastResult: { markdown: string; source: "on_device" | "in_cloud"; lang: Lang; text: string; findings: Finding[] } | null = null;
 
+// ---------- Mode (Today / History) and speed vs detail ----------
+const store = {
+  get(k: string): string | null {
+    try { return localStorage.getItem(k); } catch { return null; }
+  },
+  set(k: string, v: string): void {
+    try { localStorage.setItem(k, v); } catch { /* private window: fine */ }
+  },
+};
+let mode: Mode = store.get("pp-mode") === "history" ? "history" : "today";
+let level: Level = (["quick", "balanced", "detailed"] as const).find((l) => l === store.get("pp-level")) ?? "balanced";
+
+// Typical times on the device (MacBook, a page-long text). The cloud takes a few seconds either way.
+const DEVICE_SECONDS: Record<Level, string> = { quick: "about 8 s", balanced: "about 15 s", detailed: "about 25 s" };
+const LEVEL_TEXT: Record<Level, string> = {
+  quick: "Quick: the key points in very short bullets.",
+  balanced: "Balanced: the main points in short bullets.",
+  detailed: "Detailed: every section in full.",
+};
+
+function renderChoices(): void {
+  for (const b of $("mode-seg").querySelectorAll<HTMLButtonElement>("button")) b.setAttribute("aria-pressed", String(b.dataset.mode === mode));
+  for (const b of $("level-seg").querySelectorAll<HTMLButtonElement>("button")) b.setAttribute("aria-pressed", String(b.dataset.level === level));
+  const time = deviceStatus === "available" ? ` On your device: ${DEVICE_SECONDS[level]}; in the cloud: a few seconds.` : "";
+  $("choice-hint").textContent = LEVEL_TEXT[level] + time;
+  $("mode-hint").textContent =
+    mode === "history"
+      ? "A speech, declaration or letter from the past. History mode adds how it tries to persuade and its historical context. Try a real speech:"
+      : "A news article, a speech, a bill or a manifesto. Or try a made-up sample:";
+  const lang = langSel.value as Lang;
+  const sections = [...HEADINGS[lang], ...(mode === "history" ? [PERSUADES_HEADING[lang], CONTEXT_HEADING[lang]] : [])];
+  $("ghost").innerHTML = sections.map((h) => `<li>${escapeHtml(h)}</li>`).join("");
+  renderSamples();
+}
+$("mode-seg").addEventListener("click", (e) => {
+  const b = (e.target as HTMLElement).closest<HTMLButtonElement>("button[data-mode]");
+  if (!b) return;
+  mode = b.dataset.mode as Mode;
+  store.set("pp-mode", mode);
+  renderChoices();
+});
+$("level-seg").addEventListener("click", (e) => {
+  const b = (e.target as HTMLElement).closest<HTMLButtonElement>("button[data-level]");
+  if (!b) return;
+  level = b.dataset.level as Level;
+  store.set("pp-level", level);
+  renderChoices();
+});
+
 // ---------- Samples and character count ----------
-for (const s of SAMPLES) {
-  const b = document.createElement("button");
-  b.type = "button";
-  b.className = "chip";
-  b.textContent = s.label;
-  b.addEventListener("click", () => {
-    input.value = s.text;
-    sourceNote.hidden = true;
-    updateCount();
-    updatePrivacy();
-  });
-  $("samples").appendChild(b);
+function renderSamples(): void {
+  const year = (label: string) => Number(label.match(/\d{4}/)?.[0] ?? 0);
+  const list = SAMPLES.filter((x) => !!x.history === (mode === "history")).sort((a, b) => year(a.label) - year(b.label));
+  const box = $("samples");
+  box.innerHTML = "";
+  for (const s of list) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "chip";
+    b.textContent = s.label;
+    b.addEventListener("click", () => {
+      input.value = s.text;
+      sourceNote.hidden = true;
+      updateCount();
+      updatePrivacy();
+    });
+    box.appendChild(b);
+  }
 }
 const updateCount = () => (charCount.textContent = input.value.length.toLocaleString("en-GB"));
 input.addEventListener("input", () => {
@@ -102,6 +156,7 @@ async function refreshDevice(): Promise<void> {
   if (deviceStatus === "available") {
     pill.textContent = "🔒 On-device AI ready";
     pill.classList.add("ready");
+    void warmUpDevice(lang);
   } else if (deviceStatus === "downloadable" || deviceStatus === "downloading") {
     pill.textContent = deviceStatus === "downloading" ? "On-device AI downloading…" : "☁️ Cloud for now (on-device AI can be set up)";
     pill.classList.add("cloud");
@@ -111,11 +166,14 @@ async function refreshDevice(): Promise<void> {
     pill.classList.add("cloud");
     deviceHelp.hidden = false;
     deviceHelp.textContent = hasPromptApi()
-      ? "Chrome's on-device model doesn't support this language here, so the cloud is used."
-      : "Want it private? In desktop Chrome, turn on chrome://flags/#prompt-api-for-gemini-nano-multimodal-input and restart. Until then the cloud is used.";
+      ? "On-device AI can't run this here (this language isn't supported yet, or this computer doesn't meet Chrome's needs: 16 GB of memory or a 4 GB graphics card, and 22 GB of free disk space). The cloud is used instead."
+      : "Want it private? Open this page in desktop Chrome (version 148 or newer) on Windows, Mac, Linux or a Chromebook Plus. On-device AI is built in, with no setup beyond a one-time download. Until then the cloud is used.";
   }
 }
-langSel.addEventListener("change", refreshDevice);
+langSel.addEventListener("change", async () => {
+  await refreshDevice();
+  renderChoices();
+});
 
 setupBtn.addEventListener("click", async () => {
   setupBtn.disabled = true;
@@ -133,7 +191,7 @@ setupBtn.addEventListener("click", async () => {
 });
 
 // ---------- Explain ----------
-explainBtn.addEventListener("click", explain);
+explainBtn.addEventListener("click", () => void booted.then(() => explain()));
 
 async function explain(): Promise<void> {
   const text = input.value.trim();
@@ -148,7 +206,6 @@ async function explain(): Promise<void> {
   }
 
   const lang = langSel.value as Lang;
-  const detail = detailSel.value as Detail;
   const findings = findPersonalData(text);
   const route = chooseRoute({
     choice: runSel.value as RunChoice,
@@ -165,7 +222,6 @@ async function explain(): Promise<void> {
 
   explainBtn.disabled = true;
   explainBtn.textContent = "Explaining…";
-  badge.hidden = true;
   actions.hidden = true;
   routeNote.hidden = false;
   routeNote.textContent = route.reason;
@@ -173,10 +229,20 @@ async function explain(): Promise<void> {
   output.classList.add("streaming");
 
   const started = performance.now();
+  // A live timer, so a slower on-device run never looks stuck.
+  const likelyDevice = route.mode === "only_on_device" || (route.mode === "prefer_on_device" && deviceStatus === "available");
+  badge.hidden = false;
+  badge.className = `badge running ${likelyDevice ? "device" : "cloud"}`;
+  const tick = () => {
+    const s = Math.round((performance.now() - started) / 1000);
+    badge.textContent = `${likelyDevice ? "🔒 Working on your device" : "☁️ Working in the cloud"} · ${s}s`;
+  };
+  tick();
+  const timer = setInterval(tick, 1000);
   let markdown = "";
   try {
     const model = makeModel(route.mode, lang, settings.cloudModel);
-    const prompt = buildPrompt(text, lang, detail);
+    const prompt = buildPrompt(text, lang, level, mode);
     // When Google's cloud model is overloaded it can stop mid-answer. Try again
     // a couple of times, after a short pause, before giving up.
     let final;
@@ -207,8 +273,10 @@ async function explain(): Promise<void> {
     saveBtn.textContent = "Save to my library";
   } catch (e) {
     if (!markdown) output.innerHTML = "";
+    badge.hidden = true;
     showError(friendlyError(e));
   } finally {
+    clearInterval(timer);
     output.classList.remove("streaming");
     explainBtn.disabled = false;
     explainBtn.textContent = "Explain it";
@@ -324,29 +392,73 @@ function hideError(): void {
 }
 
 // ---------- Chrome extension side panel ----------
-// The extension shows this page in its side panel (?embed=1) and sends the text of the
-// page you are reading with postMessage. Nothing goes through a server on the way.
+// The extension shows this page in its side panel (?embed=1). The panel reads the page you
+// are reading and sends its text here with postMessage. Nothing goes through a server.
 const embedded = new URLSearchParams(location.search).get("embed") === "1";
-if (embedded) document.body.classList.add("embed");
+const inputPanel = $("input-panel");
+const pageEmpty = $("page-empty");
+const pageSource = $("page-source");
+const pageStatus = $("page-status");
+if (embedded) {
+  document.body.classList.add("embed");
+  inputPanel.hidden = true;
+  // In the panel, the mode and speed choices sit in the page card, always in view.
+  $("page-card").insertBefore($("choices"), pageStatus);
+}
+function setPageStatus(text: string): void {
+  pageStatus.textContent = text;
+  pageStatus.hidden = !text;
+}
+function askPanel(what: "page" | "selection"): void {
+  setPageStatus(what === "selection" ? "Reading your selection…" : "Reading the page…");
+  window.parent.postMessage({ type: "pp-request", what }, "*");
+}
+$("pp-page").addEventListener("click", () => askPanel("page"));
+$("pp-sel").addEventListener("click", () => askPanel("selection"));
+$("reread").addEventListener("click", () => askPanel("page"));
+$("show-input").addEventListener("click", () => {
+  inputPanel.hidden = false;
+  input.focus();
+});
+$("edit-text").addEventListener("click", () => {
+  inputPanel.hidden = !inputPanel.hidden;
+  if (!inputPanel.hidden) input.focus();
+});
+
 window.addEventListener("message", (e: MessageEvent) => {
   if (!e.origin.startsWith("chrome-extension://")) return;
   const d = e.data as { type?: string; text?: unknown; title?: unknown; autoRun?: unknown };
+  if (d?.type === "pp-status") {
+    setPageStatus(typeof d.text === "string" ? d.text.slice(0, 300) : "");
+    return;
+  }
   if (d?.type !== "pp-text" || typeof d.text !== "string") return;
   input.value = d.text.slice(0, 60000);
   (e.source as Window | null)?.postMessage({ type: "pp-got", n: input.value.length }, e.origin);
   const title = typeof d.title === "string" ? d.title.slice(0, 120) : "";
   sourceNote.textContent = title ? `From the page: ${title}` : "From the page you are reading";
   sourceNote.hidden = false;
+  $("src-title").textContent = title || "The page you are reading";
+  $("src-meta").textContent = `${input.value.length.toLocaleString("en-GB")} characters from the page`;
+  pageEmpty.hidden = true;
+  pageSource.hidden = false;
+  setPageStatus("");
+  if (embedded) inputPanel.hidden = true;
   updateCount();
   updatePrivacy();
-  if (d.autoRun === true) void explain();
+  window.scrollTo({ top: 0 });
+  if (d.autoRun === true) void booted.then(() => explain());
 });
 
 // ---------- Start ----------
-(async () => {
+// Settings and the on-device check take a moment; the page can show (and the panel can
+// say "ready") straight away, and an explainer waits for them.
+const booted = (async () => {
   updateCount();
+  renderChoices();
   settings = await loadSettings();
   await refreshDevice();
-  await renderLibrary();
-  if (embedded && window.parent !== window) window.parent.postMessage({ type: "pp-ready" }, "*");
+  renderChoices();
 })();
+if (embedded && window.parent !== window) window.parent.postMessage({ type: "pp-ready" }, "*");
+void booted.then(renderLibrary);
