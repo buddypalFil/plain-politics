@@ -26,11 +26,15 @@ app takes no side. (Chosen 22 Nov 2026 from six directions; it replaced "Ink & P
 | Rust | `#a8431a` / soft `#f4e3d8` | `#e0875c` / `#3a2418` | Check this claim, personal details, errors |
 | Slate | `#3e4a5b` | `#9fb0c6` | "Ran in the cloud" only |
 
-## Type (both bundled with the site through npm/Fontsource, OFL; never loaded from Google)
-- **Newsreader** (variable, optical size): masthead 76 px weight 800, the one-sentence headline 44 px
-  weight 700, reading text 15-17 px, italic for the tagline and notes.
+## Type (all bundled with the site through npm/Fontsource, OFL; never loaded from Google)
+- **UnifrakturMaguntia** (blackletter): the masthead only, 84 px (50 px on phones). The old-newspaper
+  nameplate, so the page reads as a newspaper at a glance. Never used for anything else.
+- **Literata** (variable, optical size): the one-sentence headline 42 px weight 700, reading text 15-17 px,
+  italic for the tagline and notes, weight 800 for the big reading-age number. Built for long
+  reading on screens.
 - **Libre Franklin** (variable): small-capital labels 11-12 px, weight 600-800, letter-spacing 0.1-0.16em
   ("THE EXPLAINER", "WHAT IT SAYS", "CHECK THIS CLAIM"), buttons, the stamp, meta text.
+- (22 Nov 2026: a blackletter masthead + Literata replaced Newsreader, which read as a generic AI-site font.)
 
 ## Layout
 - **Top bar:** date · PRIVATE · NEUTRAL · PLAIN · on-device status, over a 1 px ink rule.

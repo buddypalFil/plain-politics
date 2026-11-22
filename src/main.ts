@@ -1,8 +1,9 @@
 // The page: reads the text, picks where to run, streams the explainer,
 // and saves it to the library on request.
 
-import "@fontsource-variable/newsreader/opsz.css";
-import "@fontsource-variable/newsreader/opsz-italic.css";
+import "@fontsource/unifrakturmaguntia/latin-400.css";
+import "@fontsource-variable/literata/opsz.css";
+import "@fontsource-variable/literata/opsz-italic.css";
 import "@fontsource-variable/libre-franklin/wght.css";
 import "./style.css";
 import { buildPrompt, HEADINGS, LANGUAGE_NAMES, PERSUADES_HEADING, CONTEXT_HEADING, type Lang, type Level, type Mode } from "./prompt.ts";
@@ -170,8 +171,12 @@ function showGauge(original: string, explainer: string, lang: Lang): void {
   const pos = (age: number) => `${((age - 5) / 15) * 100}%`;
   const e = $("g-exp"), o = $("g-orig");
   e.style.left = pos(b.age); e.textContent = String(b.age);
-  o.style.left = pos(a.age); o.textContent = String(a.age);
-  $("g-cap").innerHTML = `<s title="The original">${a.age}</s> → <b title="This explainer">${b.age}</b>`;
+  // Close ages would print on top of each other, so the original's dot loses its number.
+  o.style.left = pos(a.age); o.textContent = Math.abs(a.age - b.age) < 2 ? "" : String(a.age);
+  // Only show "a → b" when the explainer is easier; an already plain text gets a note instead of a step up.
+  $("g-cap").innerHTML = b.age < a.age
+    ? `<s title="The original">${a.age}</s> → <b title="This explainer">${b.age}</b>`
+    : `<b title="This explainer">${b.age}</b><small class="g-note">The original was already easy to read (${a.age}).</small>`;
   $("gauge").setAttribute("aria-label", `Reading age: the original needs ${a.age}, this explainer ${b.age}`);
   gauge.hidden = false;
 }
@@ -294,7 +299,7 @@ async function refreshDevice(): Promise<void> {
     pill.classList.add("cloud");
     deviceHelp.hidden = false;
     deviceHelp.textContent = hasPromptApi()
-      ? "On-device AI can't run this here (this language isn't supported yet, or this computer doesn't meet Chrome's needs: 16 GB of memory or a 4 GB graphics card, and 22 GB of free disk space). The cloud is used instead."
+      ? "On-device AI isn't available here, so the cloud is used. Either this language isn't supported on the device yet, or this computer is below Chrome's minimum (16 GB of memory or a 4 GB graphics card, plus 22 GB of free disk space)."
       : "Want it private? Open this page in desktop Chrome (version 148 or newer) on Windows, Mac, Linux or a Chromebook Plus. On-device AI is built in, with no setup beyond a one-time download. Until then the cloud is used.";
   }
 }
