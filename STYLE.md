@@ -1,7 +1,9 @@
-# Plain Politics style guide: "Ink & Paper"
+# Plain Politics style guide: "Broadsheet"
 
-Plain Politics reads like a quality newspaper: black ink on warm paper, hairline rules, a serif for
-headlines and a plain sans for reading. It takes no party's colour, because the app takes no side.
+Plain Politics looks like the front page of a quality newspaper: black ink on warm paper, a big serif
+masthead, hairline rules and small-capital labels. Two touches come from a ballot paper: you mark the level
+of detail with an X, and a stamp says where the text was explained. It takes no party's colour, because the
+app takes no side. (Chosen 22 Nov 2026 from six directions; it replaced "Ink & Paper".)
 
 ## Principles
 1. **Plain first.** Every element must help someone understand a text. No decoration for its own sake.
@@ -9,57 +11,56 @@ headlines and a plain sans for reading. It takes no party's colour, because the 
    reads as a party. Ink and paper carry the design.
 3. **One accent, one meaning.** Rust is used only for "pay attention": checking a claim, personal details
    found, warnings. Nothing else is rust.
-4. **Show where the AI ran.** Device or cloud is always visible (route strip, stamps).
+4. **Show where the AI ran.** The stamp and the route strip always say device or cloud.
+5. **No emoji in the interface.** Words, rules and boxes do the work.
 
 ## Colour
-| Token | Hex | Use |
-|---|---|---|
-| Paper | `#f4f0e8` | Page background |
-| Sheet | `#fffdf8` | Cards, masthead, inputs |
-| Ink | `#161513` | Text, primary buttons, "on your device" stamp, rules under headings |
-| Ink 2 | `#3a3731` | Secondary text |
-| Muted | `#6b655a` | Labels, hints, meta |
-| Rule | `#d9d1c0` | Hairlines between sections, borders |
-| Tint | `#efe7d6` | Quiet fills (selected states, gauges) |
-| Rust | `#a8431a` / soft `#f6e6dc` | Check this claim, personal details, warnings |
-| Slate | `#3e4a5b` / soft `#e6e9ee` | "Ran in the cloud" only |
+| Token | Light | Dark | Use |
+|---|---|---|---|
+| Paper | `#f3efe6` | `#141311` | Page background |
+| Slip | `#faf8f3` | `#1c1a17` | Ballot box, text box, claim drawer |
+| Ink | `#111111` | `#f1ece2` | Text, rules, primary button, device stamp |
+| Ink 2 | `#3b3833` | `#d4cdbf` | Secondary text |
+| Muted | `#736d65` | `#a39b8c` | Labels, hints |
+| Rule | `#cfc8ba` | `#3a352e` | Hairlines |
+| Rust | `#a8431a` / soft `#f4e3d8` | `#e0875c` / `#3a2418` | Check this claim, personal details, errors |
+| Slate | `#3e4a5b` | `#9fb0c6` | "Ran in the cloud" only |
 
-Dark mode inverts paper and ink: background `#141311`, sheet `#1c1a17`, ink `#f1ece2`, rule `#34302a`,
-rust `#e0875c`, slate `#9fb0c6`.
+## Type (both bundled with the site through npm/Fontsource, OFL; never loaded from Google)
+- **Newsreader** (variable, optical size): masthead 76 px weight 800, the one-sentence headline 44 px
+  weight 700, reading text 15-17 px, italic for the tagline and notes.
+- **Libre Franklin** (variable): small-capital labels 11-12 px, weight 600-800, letter-spacing 0.1-0.16em
+  ("THE EXPLAINER", "WHAT IT SAYS", "CHECK THIS CLAIM"), buttons, the stamp, meta text.
 
-## Type
-- **Headlines, section titles, pull quotes, the logo:** Source Serif 4 (variable, bundled with the site,
-  OFL licence; never loaded from Google). Weights 600-700; pull quotes italic 500.
-- **Reading text and UI:** the system sans (`system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`).
-- **Labels:** sans, 10-11 px, bold, UPPERCASE, letter-spacing 0.12-0.18em ("SOURCE", "IN ONE SENTENCE").
-- Sizes: masthead 19-22 px, section titles 15-17 px, pull quote 19-20 px, body 14-16 px.
+## Layout
+- **Top bar:** date · PRIVATE · NEUTRAL · PLAIN · on-device status, over a 1 px ink rule.
+- **Masthead:** "Plain Politics" centred, italic tagline, then a double rule (3 px + 1 px).
+- **Section bar:** TODAY | HISTORY tabs (selected = 2 px ink underline) and MY LIBRARY.
+- **Two columns (desktop):** left 340 px "Your text" (samples as underlined links, the text box, privacy
+  line, ballot, Language / Run on as ruled rows, EXPLAIN IT); right "The explainer".
+- **The explainer as a front page:** "In one sentence" is the headline. Below it, What it says | Who it
+  affects side by side; Claims worth checking across the page under a 3 px rule, one column per claim;
+  Words explained | Questions to ask; History sections across. Reading age (big "14 → 9" plus the gauge)
+  and LISTEN · SAVE · COPY at the foot.
+- **Phone, narrow windows and the extension panel:** one column in reading order; the panel shows the
+  icon next to the masthead.
 
-## Layout and components
-- **Masthead:** logo + "Plain Politics" in serif, a 3 px double rule underneath, then the strapline
-  "PRIVATE · NEUTRAL · PLAIN" in small caps.
-- **Sections:** no boxes in the explainer. Hairline rule above each, a small number ("01", "02") and a
-  serif title. "In one sentence" is a pull quote: italic serif, larger, no number.
-- **Source:** a 3 px ink rule on the left, label "SOURCE", serif title, muted character count.
-- **Tabs (Today / History):** text tabs, the selected one underlined 2 px in ink.
-- **Speed (Quick / Balanced / Detailed):** small text options; selected = 1 px ink outline, radius 3 px.
-- **Route strip:** dots joined by lines: Your text — Privacy guard — Your device — Cloud. Steps used are
-  filled ink; steps not used are pale and struck through.
-- **Stamps:** small caps, 3 px radius. Device = solid ink on paper. Cloud = slate outline. Personal
-  details = rust on rust-soft.
-- **Buttons:** primary = solid ink, paper text, radius 6 px. Secondary = text link or 1 px rule outline.
-- **Check this claim:** rust underlined link; the drawer has a 3 px rust left rule and always says what
-  was sent ("Only this sentence was sent to the cloud").
-- **Reading-age gauge:** one ink line from 5 to 20; explainer = filled ink dot, original = hollow muted dot.
-- **Corners:** cards 12 px, controls 3-6 px. Shadows only on floating surfaces, very soft.
+## Components
+- **Ballot:** 2 px ink box, "HOW MUCH DETAIL · MARK ONE", one row per level with a 28 px square; the
+  chosen level is marked with an X.
+- **Stamp:** 2.5 px border, rotated -1.5°, "RAN ON YOUR DEVICE · 15.9 S · NOTHING SENT" (ink) or
+  "RAN IN THE CLOUD · 2.6 S · GOOGLE GEMINI" (slate). While running: "WORKING ON YOUR DEVICE · 3 S".
+- **Route strip:** Your text — Privacy guard — Your device — Cloud; used steps filled ink, others struck through.
+- **Check this claim:** rust small-caps link with an empty box; once checked the box gets an X. The drawer
+  has a 3 px rust left rule and always says what was sent.
+- **Buttons:** primary = solid ink, square corners, small caps. Secondary = 1.5 px ink outline. Actions =
+  underlined small caps.
+- **Corners:** square everywhere. No shadows.
 
 ## Icon
-"Full stop": an ink rounded square; four paper lines of uneven length (a ragged paragraph) curve together
-into one line that ends in a rust full stop. Meaning: long political text, boiled down to one plain point.
-Two drawings: `icon-full.svg` (48 px and up) and `icon-small.svg` (16-32 px: three thicker lines, bigger dot).
-Sources and renders (16 to 1024 px) in `submission/style/icons/final/`; the favicon is the small drawing.
-Rust here is `#c4562a`, a touch brighter than the UI rust so the dot reads on ink.
+"Full stop": an ink rounded square; four paper lines of uneven length curve into one line ending in a rust
+full stop. Used for the favicon, the extension and the side panel. Files in `submission/style/icons/final/`.
 
-## Video
-Same paper and ink. Title and chapter cards use the masthead: double rule, serif title, small-caps
-kicker "FIREBASE #BUILDHYBRIDAI 2026 · WEB · CHROME". Screen recordings sit in a rounded browser frame on
-paper. Captions in the system sans on a sheet-coloured bar.
+## Video and gallery
+Same paper, ink and type. Cards use the masthead (double rule, Newsreader title) and small-caps kickers.
+Screen recordings sit in a browser frame on paper. Mock-ups of all six directions: `submission/style/redesign/`.

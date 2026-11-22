@@ -1,8 +1,9 @@
 // The page: reads the text, picks where to run, streams the explainer,
 // and saves it to the library on request.
 
-import "@fontsource-variable/source-serif-4/opsz.css";
-import "@fontsource-variable/source-serif-4/opsz-italic.css";
+import "@fontsource-variable/newsreader/opsz.css";
+import "@fontsource-variable/newsreader/opsz-italic.css";
+import "@fontsource-variable/libre-franklin/wght.css";
 import "./style.css";
 import { buildPrompt, HEADINGS, LANGUAGE_NAMES, PERSUADES_HEADING, CONTEXT_HEADING, type Lang, type Level, type Mode } from "./prompt.ts";
 import { chooseRoute, type DeviceStatus, type RunChoice } from "./route.ts";
@@ -109,7 +110,7 @@ function addClaimButtons(lang: Lang): void {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "check-claim";
-    b.textContent = "Check this claim →";
+    b.textContent = "Check this claim";
     li.appendChild(b);
   }
 }
@@ -148,11 +149,12 @@ output.addEventListener("click", async (e) => {
     const where = r.grounded
       ? "Only this sentence was sent to the cloud. Check the sources yourself."
       : r.ranOn === "on_device"
-        ? "🔒 This ran on your device; nothing was sent. The links only open if you click them."
+        ? "This ran on your device; nothing was sent. The links only open if you click them."
         : "Only this sentence was sent to the cloud. The links only open if you click them.";
     drawer.innerHTML = `${renderMarkdown(r.text)}${list}${links}<p class="claim-note">${where}</p><div class="claim-suggest"></div>`;
     if (r.suggestionsHtml) drawer.querySelector(".claim-suggest")!.attachShadow({ mode: "open" }).innerHTML = r.suggestionsHtml;
-    b.textContent = "Checked ✓";
+    b.textContent = "Checked";
+    b.classList.add("done");
   } catch (err) {
     drawer.innerHTML = `<p class="claim-note">Couldn't check this claim: ${escapeHtml(friendlyError(err))}</p>`;
     b.disabled = false;
@@ -169,7 +171,8 @@ function showGauge(original: string, explainer: string, lang: Lang): void {
   const e = $("g-exp"), o = $("g-orig");
   e.style.left = pos(b.age); e.textContent = String(b.age);
   o.style.left = pos(a.age); o.textContent = String(a.age);
-  $("g-cap").textContent = `Explainer ${b.age} · Original ${a.age}`;
+  $("g-cap").innerHTML = `<s title="The original">${a.age}</s> → <b title="This explainer">${b.age}</b>`;
+  $("gauge").setAttribute("aria-label", `Reading age: the original needs ${a.age}, this explainer ${b.age}`);
   gauge.hidden = false;
 }
 
@@ -178,7 +181,7 @@ const speakBtn = $<HTMLButtonElement>("speak");
 const VOICE_LANG: Record<Lang, string> = { en: "en-GB", it: "it-IT", fr: "fr-FR" };
 function stopSpeaking(): void {
   if ("speechSynthesis" in window) speechSynthesis.cancel();
-  speakBtn.textContent = "🔊 Read aloud";
+  speakBtn.textContent = "Listen";
   speakBtn.setAttribute("aria-pressed", "false");
 }
 speakBtn.hidden = !("speechSynthesis" in window);
@@ -190,15 +193,16 @@ speakBtn.addEventListener("click", () => {
   u.rate = 0.95;
   u.onend = stopSpeaking;
   speechSynthesis.speak(u);
-  speakBtn.textContent = "⏹ Stop reading";
+  speakBtn.textContent = "Stop";
   speakBtn.setAttribute("aria-pressed", "true");
 });
 
 function renderChoices(): void {
   for (const b of $("mode-seg").querySelectorAll<HTMLButtonElement>("button")) b.setAttribute("aria-pressed", String(b.dataset.mode === mode));
   for (const b of $("level-seg").querySelectorAll<HTMLButtonElement>("button")) b.setAttribute("aria-pressed", String(b.dataset.level === level));
-  const time = deviceStatus === "available" ? ` On your device: ${DEVICE_SECONDS[level]}; in the cloud: a few seconds.` : "";
-  $("choice-hint").textContent = LEVEL_TEXT[level] + time;
+  $("choice-hint").textContent = deviceStatus === "available"
+    ? `${LEVEL_TEXT[level].split(":")[0]} takes ${DEVICE_SECONDS[level]} on your device, a few seconds in the cloud.`
+    : "";
   $("mode-hint").textContent =
     mode === "history"
       ? "A speech, declaration or letter from the past. History mode adds how it tries to persuade and its historical context. Try a real speech:"
@@ -254,8 +258,8 @@ function updatePrivacy(): void {
   redactBtn.hidden = found.length === 0;
   privacyText.textContent =
     found.length === 0
-      ? "🛡️ Privacy guard is on: personal details never go to the cloud."
-      : `🛡️ Found ${describeFindings(found)}. This text will only run on your device.`;
+      ? "Privacy guard is on: personal details never go to the cloud."
+      : `Found ${describeFindings(found)}. This text will only run on your device.`;
 }
 redactBtn.addEventListener("click", () => {
   input.value = redact(input.value);
@@ -278,15 +282,15 @@ async function refreshDevice(): Promise<void> {
   deviceHelp.hidden = true;
 
   if (deviceStatus === "available") {
-    pill.textContent = "🔒 On-device AI ready";
+    pill.textContent = "On-device AI ready";
     pill.classList.add("ready");
     void warmUpDevice(lang);
   } else if (deviceStatus === "downloadable" || deviceStatus === "downloading") {
-    pill.textContent = deviceStatus === "downloading" ? "On-device AI downloading…" : "☁️ Cloud for now (on-device AI can be set up)";
+    pill.textContent = deviceStatus === "downloading" ? "On-device AI downloading…" : "Cloud for now (on-device AI can be set up)";
     pill.classList.add("cloud");
     setupBtn.hidden = false;
   } else {
-    pill.textContent = "☁️ Using the cloud";
+    pill.textContent = "Using the cloud";
     pill.classList.add("cloud");
     deviceHelp.hidden = false;
     deviceHelp.textContent = hasPromptApi()
@@ -358,10 +362,10 @@ async function explain(): Promise<void> {
   // A live timer, so a slower on-device run never looks stuck.
   const likelyDevice = route.mode === "only_on_device" || (route.mode === "prefer_on_device" && deviceStatus === "available");
   badge.hidden = false;
-  badge.className = `badge running ${likelyDevice ? "device" : "cloud"}`;
+  badge.className = `stamp running ${likelyDevice ? "device" : "cloud"}`;
   const tick = () => {
     const s = Math.round((performance.now() - started) / 1000);
-    badge.textContent = `${likelyDevice ? "🔒 Working on your device" : "☁️ Working in the cloud"} · ${s}s`;
+    badge.innerHTML = `${likelyDevice ? "Working on your device" : "Working in the cloud"}<small>${s} s</small>`;
   };
   tick();
   const timer = setInterval(tick, 1000);
@@ -425,8 +429,10 @@ function isBusyError(e: unknown): boolean {
 
 function showBadge(source: "on_device" | "in_cloud", secs: string): void {
   badge.hidden = false;
-  badge.className = `badge ${source === "on_device" ? "device" : "cloud"}`;
-  badge.textContent = source === "on_device" ? `🔒 Ran on your device · ${secs}s` : `☁️ Ran in the cloud · ${secs}s`;
+  badge.className = `stamp ${source === "on_device" ? "device" : "cloud"}`;
+  badge.innerHTML = source === "on_device"
+    ? `Ran on your device<small>${secs} s · nothing sent</small>`
+    : `Ran in the cloud<small>${secs} s · Google Gemini</small>`;
 }
 
 // ---------- Save, copy, library ----------
@@ -474,7 +480,7 @@ async function renderLibrary(): Promise<void> {
     const li = document.createElement("li");
     li.className = "lib-item";
     const when = item.createdAt ? item.createdAt.toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "";
-    const where = item.source === "on_device" ? "🔒 device" : "☁️ cloud";
+    const where = item.source === "on_device" ? "on device" : "cloud";
     li.innerHTML = `<div><button class="link" type="button">${escapeHtml(item.title)}</button>
       <div class="lib-meta">${escapeHtml(when)} · ${where} · ${item.lang.toUpperCase()}</div></div>
       <button class="lib-del" type="button" aria-label="Delete">Delete</button>`;
@@ -587,6 +593,7 @@ window.addEventListener("message", (e: MessageEvent) => {
 // ---------- Start ----------
 // Settings and the on-device check take a moment; the page can show (and the panel can
 // say "ready") straight away, and an explainer waits for them.
+$("today").textContent = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 const booted = (async () => {
   updateCount();
   renderChoices();
