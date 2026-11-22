@@ -243,6 +243,9 @@ button.secondary { border-radius: 6px; }
 .ghost li:not(:first-child)::before { counter-increment: g; content: counter(g, decimal-leading-zero); font: 700 .64rem/1 system-ui, sans-serif; letter-spacing: .08em; margin-right: 8px; vertical-align: 2px; }
 .ghost li:first-child { font-style: italic; border-top: 0; color: var(--ink-2); }
 .output .ghost.pending { margin-top: 0; opacity: .7; }
+/* Outlines still to come carry on the real section numbers (e.g. 03, 04, 05), all numbered. */
+.output .ghost.pending li:first-child { font-style: normal; border-top: 1px dashed var(--line); color: var(--muted); }
+.output .ghost.pending li:first-child::before { counter-increment: g; content: counter(g, decimal-leading-zero); font: 700 .64rem/1 system-ui, sans-serif; letter-spacing: .08em; margin-right: 8px; vertical-align: 2px; }
 
 /* Source card (side panel) */
 .page-source { border-left: 3px solid var(--ink); padding-left: 10px; }

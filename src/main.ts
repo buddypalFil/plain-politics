@@ -79,8 +79,11 @@ function sectionNames(): string[] {
 // While the answer streams in, the sections still to come stay as faint outlines.
 function pendingSections(md: string): string {
   const done = (md.match(/^#{1,3}\s/gm) ?? []).length;
-  const rest = sectionNames().slice(Math.max(done, 1));
-  return rest.length ? `<ol class="ghost pending">${rest.map((h) => `<li>${escapeHtml(h)}</li>`).join("")}</ol>` : "";
+  const start = Math.max(done, 1); // section 0 is "In one sentence" (unnumbered); section n is numbered n
+  const rest = sectionNames().slice(start);
+  return rest.length
+    ? `<ol class="ghost pending" style="counter-reset: g ${start - 1}">${rest.map((h) => `<li>${escapeHtml(h)}</li>`).join("")}</ol>`
+    : "";
 }
 
 // ---------- Where it ran: Your text -> Privacy guard -> Your device / Cloud ----------
