@@ -15,6 +15,7 @@ link. Plain Politics gives back a short, neutral explainer laid out like a newsp
 It works in English, Italian, French, Spanish and German, and never takes sides or tells anyone how to vote.
 
 - **Live site:** https://plain-politics-app.web.app (best in desktop Chrome; installable, works offline)
+- **iPhone app:** native SwiftUI, with Apple's on-device model first and Gemini as backup ([see below](#iphone-app))
 - **Demo video:** _link added at submission_
 - Built for the Firebase **#BuildHybridAI 2026** hackathon (web / Chrome track).
 
@@ -84,6 +85,9 @@ the page loads it into memory in the background, so the first run is as quick as
 | **Cloud Firestore** | Stores saved explainers, with an offline copy on the device; rules let each user see only their own, and check every field | [`firestore.rules`](firestore.rules) |
 | **Hosting** | Serves the live site and its offline service worker | [`firebase.json`](firebase.json) |
 
+The iPhone app uses **Firebase AI Logic** (hybrid, with Apple's on-device model) and **App Check** too: see
+[iPhone app](#iphone-app).
+
 ## Privacy and safety
 
 - **On the device**, the text stays on the computer. **In the cloud**, it is sent to Google's Gemini API through
@@ -107,9 +111,11 @@ the page loads it into memory in the background, so the first run is as quick as
 
 - **Lighthouse** on the live site: **100 / 100 / 100 / 100** (performance, accessibility, best practices, SEO) on
   mobile and on desktop; first paint 0.9 s on a simulated slow phone.
-- **32 unit tests** (routing including offline, privacy guard, prompts in every language, Spot the spin, YouTube
-  links, error messages, reading age, safe Markdown) and an end-to-end browser check of every feature before each
-  release.
+- **34 unit tests** (routing including offline, privacy guard, prompts in every language, Spot the spin, YouTube
+  links, error messages, reading age, safe Markdown, giving up on a silent answer) and an end-to-end browser check
+  of every feature before each release. The iPhone app's core logic has 28 checks of its own, on the same cases.
+- **Never stuck waiting**: if the cloud goes silent mid-answer, the page gives up after 25 seconds, tries again, and
+  after three tries says so in plain words ([`src/stream.ts`](src/stream.ts)).
 
 ## Run it yourself
 
@@ -117,7 +123,7 @@ Needs Node.js 22.18 or newer (the tests run the TypeScript files directly).
 
 ```bash
 npm install
-npm test        # 32 unit tests
+npm test        # 34 unit tests
 npm run dev     # http://localhost:5173
 ```
 
@@ -162,6 +168,57 @@ side panel with `postMessage`; the page only accepts text from the extension pan
 iframe is allowed to use Chrome's built-in model (`allow="language-model"`), so the explainer still runs on the
 device when it can.
 
+## iPhone app
+
+[`ios/PlainPolitics.swiftpm`](ios/PlainPolitics.swiftpm) is a native SwiftUI app with the same idea and the same
+newspaper look. It uses **Firebase AI Logic's hybrid model for Apple platforms**: **Apple's on-device model** (Apple
+Intelligence, through Foundation Models) answers first, and **Gemini in the cloud** is the backup
+([`Sources/App/Engine.swift`](ios/PlainPolitics.swiftpm/Sources/App/Engine.swift)).
+
+It has the Today and History tabs with the same samples, Quick / Balanced / Detailed, all five languages, the privacy
+guard, Spot the spin, the stamp saying where it ran, and Share. Compare, photos and videos, claim checks and the
+library are on the website only.
+
+Where it runs follows the website's rules
+([`Sources/Core/Route.swift`](ios/PlainPolitics.swiftpm/Sources/Core/Route.swift)):
+
+| Situation | What happens |
+|---|---|
+| "Auto", Apple's model ready | `hybridModel(primary: SystemLanguageModel.default, secondary: geminiModel)`: on the device; Gemini only if the device fails |
+| "Auto", no Apple Intelligence here, or a text over about 9,000 characters | Gemini in the cloud |
+| Personal details found | Device only; if the device can't run it, nothing is sent, and one button removes the details |
+| Offline | Device only, or a clear message |
+| "This device only" / "Cloud only" | As chosen, or a clear message saying why not |
+
+- **Checks the model really answers.** Settings can say Apple Intelligence is on while its model is still
+  downloading. So when the app opens (and when you come back to it), it asks Apple's model for one word. Until the
+  model answers, the top of the screen says "Using the cloud" and explains why, instead of "On-device AI ready".
+- **Never stuck waiting.** A cloud request gives up after 30 seconds of silence and is tried once more.
+- **App Check** protects the cloud calls (the debug provider in development builds).
+- The privacy guard, Spot the spin and the routing are plain Swift with no Firebase, checked by 28 tests on the same
+  cases as the website ([`CoreTests/main.swift`](ios/PlainPolitics.swiftpm/CoreTests/main.swift)).
+
+**Run it.** The app targets iOS 26 and was built and tested with Xcode 27.2 and the iOS 27.2 Simulator. Open
+`ios/PlainPolitics.swiftpm` in Xcode, pick an iPhone simulator and press Run. Or from the command line (use any iPhone
+simulator you have):
+
+```bash
+cd ios/PlainPolitics.swiftpm
+xcodebuild -scheme "Plain Politics" -destination 'platform=iOS Simulator,name=iPhone 18 Pro' \
+  -derivedDataPath ../DerivedData CODE_SIGNING_ALLOWED=NO build
+```
+
+On the first run, Xcode's console prints an **App Check debug token**: add it in the Firebase console under **App
+Check > Apps** (the iOS app) **> Manage debug tokens**, as for the website. The core checks run without Xcode:
+
+```bash
+swiftc ios/PlainPolitics.swiftpm/Sources/Core/*.swift ios/PlainPolitics.swiftpm/CoreTests/main.swift -o /tmp/pp-core && /tmp/pp-core
+```
+
+**On-device answers** need Apple Intelligence: an iPhone 15 Pro or newer with it turned on. In the Simulator, the app
+borrows the Mac's model, so the Mac needs Apple Intelligence on and its model downloaded. Tip: the Mac's language
+and Siri's language must match (System Settings > Siri says so), or the model never finishes downloading.
+
 ## Project layout
 
 ```
@@ -173,6 +230,7 @@ src/spin.ts           Spot the spin word list and safe highlighting (pure, teste
 src/share.ts          the front-page picture, drawn on a canvas
 src/readability.ts    reading age, worked out on the device (pure, tested)
 src/errors.ts         plain-language error messages (pure, tested)
+src/stream.ts         gives up on an answer that goes silent (pure, tested)
 src/youtube.ts        YouTube link check (pure, tested)
 src/device.ts         asks Chrome whether Gemini Nano is available (text and images)
 src/prompt.ts         the shared prompts (explain, History, Compare), in five languages
@@ -181,14 +239,15 @@ src/samples.ts        made-up sample texts, public-domain speeches, Compare pair
 public/sw.js          service worker for the offline app
 tests/                unit tests
 extension/            Chrome extension (side panel, right-click menu)
+ios/                  iPhone app (SwiftUI; Sources/App: screen and Firebase, Sources/Core: routing, privacy, spin)
 firestore.rules       database rules
 remoteconfig.template.json
 ```
 
 ## How it was built
 
-Built from scratch in November 2026 during the hackathon period, with TypeScript, Vite and the Firebase JS SDK,
-using Claude Code as the coding assistant.
+Built from scratch in November 2026 during the hackathon period, with TypeScript, Vite and the Firebase JS SDK
+(website) and SwiftUI with the Firebase Apple SDK (iPhone app), using Claude Code as the coding assistant.
 
 ## Licence
 
