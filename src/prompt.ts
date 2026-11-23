@@ -1,7 +1,7 @@
 // Builds the instructions we send to the AI. The same prompt is used on the
 // device and in the cloud, so both give the same kind of answer.
 
-export type Lang = "en" | "it" | "fr";
+export type Lang = "en" | "it" | "fr" | "es" | "de";
 // Speed vs detail. Gemini Nano writes more slowly than the cloud, so shorter
 // answers arrive sooner on the device (measured on a MacBook: Balanced 15 s, Detailed 25 s).
 export type Level = "quick" | "balanced" | "detailed";
@@ -13,6 +13,8 @@ export const LANGUAGE_NAMES: Record<Lang, string> = {
   en: "English",
   it: "Italian",
   fr: "French",
+  es: "Spanish",
+  de: "German",
 };
 
 // The six sections of every explainer, in each language.
@@ -20,6 +22,8 @@ export const HEADINGS: Record<Lang, string[]> = {
   en: ["In one sentence", "What it says", "Claims worth checking", "Who it affects", "Words explained", "Questions to ask"],
   it: ["In una frase", "Cosa dice", "Affermazioni da verificare", "Chi riguarda", "Parole spiegate", "Domande da porsi"],
   fr: ["En une phrase", "Ce que dit le texte", "Affirmations à vérifier", "Qui est concerné", "Mots expliqués", "Questions à se poser"],
+  es: ["En una frase", "Qué dice", "Afirmaciones que conviene comprobar", "A quién afecta", "Palabras explicadas", "Preguntas que hacerse"],
+  de: ["In einem Satz", "Was drinsteht", "Aussagen zum Überprüfen", "Wen es betrifft", "Begriffe erklärt", "Fragen, die man stellen kann"],
 };
 
 // The six sections of a comparison. The claims section is fifth here (index 4).
@@ -27,6 +31,8 @@ export const COMPARE_HEADINGS: Record<Lang, string[]> = {
   en: ["In one sentence", "Where they agree", "Where they differ", "Who each would affect", "Claims worth checking", "Questions to ask"],
   it: ["In una frase", "Dove sono d'accordo", "Dove sono diversi", "Chi riguarda ciascuno", "Affermazioni da verificare", "Domande da porsi"],
   fr: ["En une phrase", "Où ils sont d'accord", "Où ils diffèrent", "Qui chacun concerne", "Affirmations à vérifier", "Questions à se poser"],
+  es: ["En una frase", "En qué coinciden", "En qué se diferencian", "A quién afectaría cada uno", "Afirmaciones que conviene comprobar", "Preguntas que hacerse"],
+  de: ["In einem Satz", "Worin sie übereinstimmen", "Worin sie sich unterscheiden", "Wen jeder Text betreffen würde", "Aussagen zum Überprüfen", "Fragen, die man stellen kann"],
 };
 
 // Two more sections in History mode.
@@ -34,16 +40,22 @@ export const PERSUADES_HEADING: Record<Lang, string> = {
   en: "How it tries to persuade",
   it: "Come cerca di convincere",
   fr: "Comment il cherche à convaincre",
+  es: "Cómo intenta convencer",
+  de: "Wie es zu überzeugen versucht",
 };
 export const CONTEXT_HEADING: Record<Lang, string> = {
   en: "Historical context",
   it: "Contesto storico",
   fr: "Contexte historique",
+  es: "Contexto histórico",
+  de: "Historischer Kontext",
 };
 const CONTEXT_NOTE: Record<Lang, string> = {
   en: "From the AI's general knowledge, not from the text. Check it.",
   it: "Dalle conoscenze generali dell'IA, non dal testo. Verificalo.",
   fr: "Tiré des connaissances générales de l'IA, pas du texte. À vérifier.",
+  es: "Del conocimiento general de la IA, no del texto. Compruébalo.",
+  de: "Aus dem Allgemeinwissen der KI, nicht aus dem Text. Bitte prüfen.",
 };
 
 const LEVELS: Record<Level, { bullets: string; terms: string; limit: string | null }> = {
@@ -133,7 +145,7 @@ export function buildComparePrompt(a: string, b: string, lang: Lang, level: Leve
     `## ${h[1]}`,
     `${bullets}: points that both texts share. If they agree on nothing, say so.`,
     `## ${h[2]}`,
-    `${bullets}. Each one starts with the topic in bold, then what Text A says and what Text B says, like this: **Cost**: Text A: ... Text B: ...`,
+    `${bullets}. Each one starts with the topic in bold, then what Text A says and what Text B says, like this: **Cost**: Text A: ... Text B: ... Always write the labels exactly as "Text A:" and "Text B:", in English and with the colon, whatever language the rest is in.`,
     `## ${h[3]}`,
     `${bullets}: which groups of people each text would affect and how. Say Text A or Text B each time.`,
     `## ${h[4]}`,

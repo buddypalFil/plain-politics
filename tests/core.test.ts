@@ -182,3 +182,31 @@ test("youtube links: common forms become the standard address, others are refuse
   ]) assert.equal(youtubeUrl(u), want, u);
   for (const u of ["https://vimeo.com/123", "https://www.youtube.com/@channel", "not a link", "https://evil.com/youtube.com/watch?v=CHAyepp7ypY"]) assert.equal(youtubeUrl(u), null, u);
 });
+
+test("error messages: plain advice, and on-device advice only where it can run", async () => {
+  const { friendlyMessage } = await import("../src/errors.ts");
+  const on = { deviceReady: true, online: true, dev: false };
+  const off = { deviceReady: false, online: true, dev: false };
+  assert.match(friendlyMessage("AppCheck: ReCAPTCHA error", off), /anti-abuse check/);
+  assert.doesNotMatch(friendlyMessage("AppCheck: ReCAPTCHA error", off), /debug token|This device only/);
+  assert.match(friendlyMessage("AppCheck: ReCAPTCHA error", on), /This device only/);
+  assert.match(friendlyMessage("Failed to fetch", off), /connection dropped/);
+  assert.match(friendlyMessage("anything", { ...off, online: false }), /connection dropped/);
+  assert.match(friendlyMessage("Response was blocked due to SAFETY", off), /safety filters/);
+  assert.match(friendlyMessage("[400] Cannot access youtube fileUri: video is private", off), /YouTube video couldn't be opened/);
+  assert.match(friendlyMessage("[429] RESOURCE_EXHAUSTED", off), /limit/);
+  assert.match(friendlyMessage("[503] The model is overloaded", off), /overloaded/);
+  assert.match(friendlyMessage("weird", off), /Something went wrong: weird/);
+});
+
+test("every language has every heading, and prompts use them", async () => {
+  const p = await import("../src/prompt.ts");
+  for (const lang of Object.keys(p.LANGUAGE_NAMES) as (keyof typeof p.LANGUAGE_NAMES)[]) {
+    assert.equal(p.HEADINGS[lang].length, 6, lang);
+    assert.equal(p.COMPARE_HEADINGS[lang].length, 6, lang);
+    assert.ok(p.PERSUADES_HEADING[lang] && p.CONTEXT_HEADING[lang], lang);
+    assert.ok(p.buildPrompt("Some text here.", lang).includes(`## ${p.HEADINGS[lang][1]}`), lang);
+    assert.ok(p.buildPrompt("Some text here.", lang).includes(`in ${p.LANGUAGE_NAMES[lang]}`), lang);
+  }
+  assert.ok(p.buildComparePrompt("a", "b", "de").includes("## Worin sie sich unterscheiden"));
+});

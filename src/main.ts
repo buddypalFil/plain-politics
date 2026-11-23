@@ -14,6 +14,7 @@ import { readingAge } from "./readability.ts";
 import { SAMPLES, COMPARE_SAMPLES } from "./samples.ts";
 import { drawFrontPage } from "./share.ts";
 import { youtubeUrl } from "./youtube.ts";
+import { friendlyMessage } from "./errors.ts";
 import { findSpin, countByKind, highlightHtml, SPIN_KINDS, type SpinKind } from "./spin.ts";
 import { findPersonalData, describeFindings, redact, redactKnown, type Finding } from "./privacy.ts";
 import {
@@ -125,7 +126,7 @@ function shapeDiffer(lang: Lang): void {
   for (const li of card.querySelectorAll("li")) {
     const topic = li.querySelector(":scope > strong:first-child");
     const rest = li.innerHTML.slice(topic ? topic.outerHTML.length : 0).replace(/^\s*[:\-–—]\s*/, "");
-    const m = rest.match(/^(?:Text|Testo|Texte)\s*A\s*:\s*([\s\S]*?)\s*(?:Text|Testo|Texte)\s*B\s*:\s*([\s\S]*)$/i);
+    const m = rest.match(/^(?:Text(?:e|o|os|s)?|Testo)\s*A\s*:?\s*([\s\S]*?)\s*(?:Text(?:e|o|os|s)?|Testo)\s*B\s*:?\s*([\s\S]*)$/i);
     if (!m) continue;
     li.innerHTML = `${topic ? topic.outerHTML : ""}<span class="ab"><b>A</b>${m[1].replace(/[.;,]\s*$/, ".")}</span><span class="ab"><b>B</b>${m[2]}</span>`;
   }
@@ -253,7 +254,7 @@ function showGauge(original: string, explainer: string, lang: Lang): void {
 
 // ---------- Read aloud (the browser's own voice: free and private) ----------
 const speakBtn = $<HTMLButtonElement>("speak");
-const VOICE_LANG: Record<Lang, string> = { en: "en-GB", it: "it-IT", fr: "fr-FR" };
+const VOICE_LANG: Record<Lang, string> = { en: "en-GB", it: "it-IT", fr: "fr-FR", es: "es-ES", de: "de-DE" };
 function stopSpeaking(): void {
   if ("speechSynthesis" in window) speechSynthesis.cancel();
   speakBtn.textContent = "Listen";
@@ -901,20 +902,7 @@ function messageOf(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 function friendlyError(e: unknown): string {
-  const m = messageOf(e);
-  if (/app.?check|PERMISSION_DENIED|403/i.test(m)) {
-    return "The request was blocked by App Check. If you're running this locally, register the debug token from the browser console in Firebase (Security > App Check).";
-  }
-  if (/parse-failed|Failed to parse stream/i.test(m)) {
-    return "Google's cloud AI is very busy right now and stopped before the answer finished. Wait a minute and press \"Explain it\" again, or use on-device AI.";
-  }
-  if (/quota|RESOURCE_EXHAUSTED|429/i.test(m)) {
-    return "The cloud AI is busy or out of free quota right now. Try again in a minute, or use on-device AI.";
-  }
-  if (/on.?device|LanguageModel|unavailable/i.test(m)) {
-    return `On-device AI couldn't run this: ${m}. Try "Auto" or "Cloud only".`;
-  }
-  return `Something went wrong: ${m}`;
+  return friendlyMessage(messageOf(e), { deviceReady: deviceStatus === "available", online: navigator.onLine, dev: import.meta.env.DEV });
 }
 function showError(msg: string): void {
   errorBox.hidden = false;
