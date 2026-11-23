@@ -12,6 +12,7 @@ import { renderMarkdown, firstLine, escapeHtml } from "./markdown.ts";
 import { getDeviceStatus, hasPromptApi, warmUpDevice } from "./device.ts";
 import { readingAge } from "./readability.ts";
 import { SAMPLES, COMPARE_SAMPLES } from "./samples.ts";
+import { drawFrontPage } from "./share.ts";
 import { findSpin, countByKind, highlightHtml, SPIN_KINDS, type SpinKind } from "./spin.ts";
 import { findPersonalData, describeFindings, redact, redactKnown, type Finding } from "./privacy.ts";
 import {
@@ -54,7 +55,7 @@ const sourceNote = $("source-note");
 
 let settings: Settings = { cloudModel: "gemini-3.5-flash-lite", deviceCharLimit: 20000, claimGrounding: false };
 let deviceStatus: DeviceStatus = "unavailable";
-let lastResult: { markdown: string; source: "on_device" | "in_cloud"; lang: Lang; text: string; findings: Finding[] } | null = null;
+let lastResult: { markdown: string; source: "on_device" | "in_cloud"; lang: Lang; text: string; findings: Finding[]; seconds: string } | null = null;
 
 // ---------- Mode (Today / History) and speed vs detail ----------
 const store = {
@@ -540,7 +541,7 @@ async function explain(): Promise<void> {
     else shapeDiffer(lang);
     showSpin(compare ? [a, b] : [a]);
     addClaimButtons(lang);
-    lastResult = { markdown, source, lang, text, findings };
+    lastResult = { markdown, source, lang, text, findings, seconds: secs };
     actions.hidden = false;
     saveBtn.disabled = false;
     saveBtn.textContent = "Save to my library";
@@ -591,6 +592,64 @@ saveBtn.addEventListener("click", async () => {
   } catch (e) {
     saveBtn.disabled = false;
     showError(`Couldn't save: ${messageOf(e)}`);
+  }
+});
+
+$("print").addEventListener("click", () => window.print());
+
+// Share as a front page: a picture of the explainer (never the original text), shared on phones,
+// downloaded on computers. Personal details found by the privacy guard are removed first.
+const shareBtn = $<HTMLButtonElement>("share");
+shareBtn.addEventListener("click", async () => {
+  if (!lastResult) return;
+  const r = lastResult;
+  const clean = (s: string) => redactKnown(s.replace(/\s*Check this claim\s*$/i, "").trim(), r.findings);
+  const cards = [...output.querySelectorAll<HTMLElement>(".card")];
+  const section = (i: number) => {
+    const c = cards[i];
+    if (!c) return { title: "", items: [] as string[] };
+    const items = [...c.querySelectorAll<HTMLElement>(":scope > ul > li")].map((li) => {
+      // The A/B lines of a comparison read as one line on the picture.
+      const copy = li.cloneNode(true) as HTMLElement;
+      copy.querySelectorAll(".check-claim, .claim-drawer").forEach((x) => x.remove());
+      copy.querySelectorAll(".ab b").forEach((b) => (b.textContent = `${b.textContent}: `));
+      copy.querySelectorAll(".ab").forEach((ab) => ab.append(" "));
+      return clean(copy.textContent ?? "").replace(/\s+/g, " ");
+    });
+    return { title: c.querySelector("h3")?.textContent ?? "", items };
+  };
+  const compare = !!cards[2]?.querySelector(".ab");
+  shareBtn.disabled = true;
+  shareBtn.textContent = "Drawing…";
+  try {
+    const blob = await drawFrontPage({
+      headline: clean(cards[0]?.querySelector("p")?.textContent ?? firstLine(r.markdown)),
+      // An explainer shows what it says + claims; a comparison shows where they differ + claims.
+      first: section(compare ? 2 : 1),
+      second: section(compare ? 4 : 2),
+      third: section(5),
+      ranOn: r.source,
+      seconds: r.seconds,
+      date: new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" }),
+    });
+    const file = new File([blob], "plain-politics-front-page.png", { type: "image/png" });
+    const touch = matchMedia("(pointer: coarse)").matches;
+    if (touch && navigator.canShare?.({ files: [file] })) {
+      await navigator.share({ files: [file], title: "Plain Politics" }).catch(() => {});
+    } else {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = file.name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    }
+    shareBtn.textContent = touch ? "Share as a front page" : "Saved ✓";
+    setTimeout(() => (shareBtn.textContent = "Share as a front page"), 2000);
+  } catch (e) {
+    showError(`Couldn't make the picture: ${messageOf(e)}`);
+    shareBtn.textContent = "Share as a front page";
+  } finally {
+    shareBtn.disabled = false;
   }
 });
 

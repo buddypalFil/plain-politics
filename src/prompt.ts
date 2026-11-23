@@ -77,17 +77,25 @@ export function buildPrompt(text: string, lang: Lang, level: Level = "balanced",
     `## ${h[1]}`,
     `${bullets} with the main points.`,
     `## ${h[2]}`,
-    `${bullets}. Each one: a claim from the text, then why a reader should check it.`,
+    history
+      ? `${bullets}. Each one (do not start with the word "Claim"): a statement the speaker presents as a fact or as something everyone agrees on, then what a reader could check about it with history sources (for example whether it was true for everyone at the time). Pick statements about the world, not dates or arithmetic.`
+      : `${bullets}. Each one: the claim from the text (do not start with the word "Claim"), then why a reader should check it.`,
     `## ${h[3]}`,
-    `${bullets}: which groups of people this affects and how, as the text describes it.`,
+    history
+      ? `${bullets}: the groups of people the speaker talks to or about, and what the text says about them or asks of them. Do not write that the text does not say; name who it addresses.`
+      : `${bullets}: which groups of people this affects and how, as the text describes it.`,
     `## ${h[4]}`,
-    `${terms}: **term**: its plain meaning. Only terms that appear in the text.`,
+    history
+      ? `${terms}: **term**: its plain meaning. Choose old-fashioned, formal or unusual words and phrases from the text first, the ones a student today would not know. Only terms that appear in the text.`
+      : `${terms}: **term**: its plain meaning. Only terms that appear in the text.`,
     `## ${h[5]}`,
-    `${bullets}: fair questions a reader could ask to understand it better.`,
+    history
+      ? `${bullets}: questions a student could ask or look up to understand the text and its time better.`
+      : `${bullets}: fair questions a reader could ask to understand it better.`,
     ...(history
       ? [
           `## ${PERSUADES_HEADING[lang]}`,
-          `${bullets}. Each one: a technique the speaker uses (for example repetition, emotional words, "us versus them", appeals to fear, hope or duty), with a short quote from the text. Describe the technique only; do not judge whether the cause was right or wrong.`,
+          `${bullets}. Each one starts with the name of a technique in bold (for example **Repetition**, **Emotional words**, **Us and them**, **Appeal to duty**), then a short quote from the text, then what it makes the listener feel or do. Describe the technique only; do not judge whether the cause was right or wrong.`,
           `## ${CONTEXT_HEADING[lang]}`,
           `First line, in italics: _${CONTEXT_NOTE[lang]}_`,
           `Then ${bullets.toLowerCase()} of well-known background: when and where this was said or written, what was happening at the time, and what happened next. This is the only section where you may use knowledge from outside the text. Stay neutral and factual. If you are not sure of something, leave it out.`,

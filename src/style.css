@@ -330,7 +330,7 @@ button.secondary:hover { background: var(--accent-soft); }
 .page-status { margin: 10px 0 0; font: 500 13px/1.4 var(--sans); color: var(--muted); }
 
 /* ---------- Phones and narrow windows ---------- */
-@media (max-width: 860px) {
+@media screen and (max-width: 860px) {
   .wrap { padding: 0 18px; }
   .topbar { font-size: 10px; letter-spacing: .1em; }
   .topbar .today, .topbar .strap { display: none; }
@@ -392,3 +392,33 @@ button.secondary:hover { background: var(--accent-soft); }
   .stamp, .stamp.running, .route .n.active i, .output.streaming::after, .mast h1, #level-seg .xb, .check-claim::after { animation: none !important; }
   button.primary { transition: none; }
 }
+
+/* ---------- Print edition: the explainer as a clean newspaper page ---------- */
+@media print {
+  :root {
+    --bg: #fff; --panel: #fff; --ink: #111; --ink-2: #3b3833; --muted: #6b655d; --line: #cfc8ba;
+    --accent-soft: #eee8dc; --cloud: #3e4a5b; --warn: #a8431a; --warn-soft: #f4e3d8; --grain: none;
+    color-scheme: light;
+  }
+  @page { size: A4; margin: 13mm 14mm 15mm; }
+  body { background: #fff; font-size: 10.5pt; }
+  * { animation: none !important; transition: none !important; }
+  .wrap { max-width: none; padding: 0; }
+  .topbar .pill, .sections, #input-panel, .page-card, .library, .actions, #route, #route-note, #error,
+  #redact-send, #device-help, #setup-device, .check-claim, #spin-kinds, .spin-why, .foot p + p { display: none !important; }
+  .mast { padding: 6px 0 6px; }
+  .mast h1 { font-size: 52pt; }
+  .ear { width: 130px; font-size: 8pt; }
+  .grid { display: block; margin-top: 10px; }
+  .story { padding: 0; }
+  .output .card { break-inside: avoid; }
+  .output .card:nth-child(1) p { font-size: 24pt; }
+  .output li, .output p { font-size: 10.5pt; }
+  .output .card:nth-child(3) li { padding-bottom: 8px !important; }
+  .ear { padding: 5px 8px; }
+  .stamp, mark, .output li::before, .ab b { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .clip { max-height: none; overflow: visible; border: 0; padding: 0; background: none; font-size: 10pt; }
+  .spin, .out-foot { break-inside: avoid; }
+  .foot { margin-top: 14px; padding: 0; }
+}
+
