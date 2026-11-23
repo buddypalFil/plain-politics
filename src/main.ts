@@ -94,10 +94,10 @@ function sectionNames(): string[] {
   return [...HEADINGS[lang], ...(mode === "history" ? [PERSUADES_HEADING[lang], CONTEXT_HEADING[lang]] : [])];
 }
 // While the answer streams in, the sections still to come stay as faint outlines.
-function pendingSections(md: string): string {
+function pendingSections(md: string, names: string[] = sectionNames()): string {
   const done = (md.match(/^#{1,3}\s/gm) ?? []).length;
   const start = Math.max(done, 1); // section 0 is "In one sentence" (unnumbered); section n is numbered n
-  const rest = sectionNames().slice(start);
+  const rest = names.slice(start);
   return rest.length
     ? `<ol class="ghost pending" style="counter-reset: g ${start - 1}">${rest.map((h) => `<li>${escapeHtml(h)}</li>`).join("")}</ol>`
     : "";
@@ -190,7 +190,11 @@ output.addEventListener("click", async (e) => {
   const b = (e.target as HTMLElement).closest<HTMLButtonElement>("button.check-claim");
   if (!b || b.disabled) return;
   const li = b.closest("li")!;
-  const claim = (li.firstChild ? [...li.childNodes].filter((n) => n !== b && !(n instanceof HTMLElement && n.classList.contains("claim-drawer"))).map((n) => n.textContent).join("") : "").trim();
+  const rawClaim = (li.firstChild ? [...li.childNodes].filter((n) => n !== b && !(n instanceof HTMLElement && n.classList.contains("claim-drawer"))).map((n) => n.textContent).join("") : "").trim();
+  // If the original text had personal details, the claim gets the same details removed, and it is only
+  // checked on this device, whatever "Run on" says now. (A name found once is removed everywhere.)
+  const personalText = (lastResult?.findings.length ?? 0) > 0;
+  const claim = personalText ? redactKnown(rawClaim, lastResult!.findings) : rawClaim;
   const lang = (lastResult?.lang ?? langSel.value) as Lang;
   let drawer = li.querySelector<HTMLElement>(".claim-drawer");
   if (!drawer) {
@@ -202,6 +206,10 @@ output.addEventListener("click", async (e) => {
     drawer.innerHTML = `<p class="claim-note">This claim includes personal details, so it was not sent anywhere.</p>`;
     return;
   }
+  if (personalText && deviceStatus !== "available") {
+    drawer.innerHTML = `<p class="claim-note">This text had personal details, so its claims are only checked on your device, and on-device AI isn't ready in this browser. Nothing was sent.</p>`;
+    return;
+  }
   b.disabled = true;
   drawer.innerHTML = settings.claimGrounding
     ? `<p class="claim-note">Checking with Google Search… Only this sentence is sent to the cloud.</p>`
@@ -209,7 +217,7 @@ output.addEventListener("click", async (e) => {
   try {
     // Respect "Run on": "This device only" never falls back to the cloud.
     // Offline, only the device can answer, so it is treated like "This device only".
-    const run = navigator.onLine ? runSel.value : "device";
+    const run = navigator.onLine && !personalText ? runSel.value : "device";
     const mode = run === "device" ? "only_on_device" : run === "cloud" ? "only_in_cloud" : "prefer_on_device";
     const r = await checkClaim(claim, lang, LANGUAGE_NAMES[lang], settings.cloudModel, settings.claimGrounding && run !== "device", mode);
     const list = r.sources.length
@@ -264,7 +272,12 @@ function stopSpeaking(): void {
 speakBtn.hidden = !("speechSynthesis" in window);
 speakBtn.addEventListener("click", () => {
   if (speechSynthesis.speaking) { stopSpeaking(); return; }
-  const text = [...output.querySelectorAll(".card")].map((c) => (c as HTMLElement).innerText.replace(/^\d+\s*/, "")).join(". \n");
+  // Read the sections only: not the "Check this claim" buttons or any open claim answers.
+  const text = [...output.querySelectorAll(".card")].map((c) => {
+    const copy = c.cloneNode(true) as HTMLElement;
+    copy.querySelectorAll(".check-claim, .claim-drawer").forEach((x) => x.remove());
+    return (copy.textContent ?? "").replace(/^\d+\s*/, "").replace(/\s+/g, " ").trim();
+  }).join(". \n");
   const u = new SpeechSynthesisUtterance(text);
   u.lang = VOICE_LANG[(lastResult?.lang ?? langSel.value) as Lang];
   u.rate = 0.95;
@@ -376,17 +389,17 @@ function updatePrivacy(): void {
       ? "Privacy guard is on: personal details never go to the cloud."
       : `Found ${describeFindings(found)}. This text will only run on your device.`;
 }
-redactBtn.addEventListener("click", () => {
-  input.value = redact(input.value);
-  input2.value = redact(input2.value);
+// Both boxes are checked together, so a name given in Text A is also removed from Text B.
+function redactBoxes(): void {
+  const findings = findPersonalData(allText());
+  input.value = redactKnown(redact(input.value), findings);
+  if (comparing()) input2.value = redactKnown(redact(input2.value), findings);
   updateCount();
   updatePrivacy();
-});
+}
+redactBtn.addEventListener("click", redactBoxes);
 redactSendBtn.addEventListener("click", () => {
-  input.value = redact(input.value);
-  input2.value = redact(input2.value);
-  updateCount();
-  updatePrivacy();
+  redactBoxes();
   explain();
 });
 
@@ -432,7 +445,7 @@ langSel.addEventListener("change", async () => {
   await refreshDevice();
   renderChoices();
 });
-window.addEventListener("online", () => void refreshDevice().then(renderLibrary));
+window.addEventListener("online", () => void refreshDevice().then(() => (libraryShown ? renderLibrary() : undefined)));
 window.addEventListener("offline", () => void refreshDevice());
 
 setupBtn.addEventListener("click", async () => {
@@ -645,7 +658,18 @@ for (const box of [input, input2]) {
   });
 }
 
+// One explainer at a time: extra clicks, Ctrl+Enter or the side panel during a run are ignored.
+let running = false;
 async function explain(): Promise<void> {
+  if (running) return;
+  running = true;
+  try {
+    await explainOnce();
+  } finally {
+    running = false;
+  }
+}
+async function explainOnce(): Promise<void> {
   const a = input.value.trim();
   const b = input2.value.trim();
   const compare = comparing();
@@ -691,6 +715,8 @@ async function explain(): Promise<void> {
   routeNote.textContent = route.reason;
   output.innerHTML = "";
   output.classList.add("streaming");
+  // The sections this run will produce, fixed now, so switching tab or language mid-run can't change them.
+  const runSections = sectionNames();
 
   const started = performance.now();
   // A live timer, so a slower on-device run never looks stuck.
@@ -717,7 +743,7 @@ async function explain(): Promise<void> {
         const result = await model.generateContentStream(prompt);
         for await (const chunk of result.stream) {
           markdown += chunk.text();
-          output.innerHTML = renderMarkdown(markdown) + pendingSections(markdown);
+          output.innerHTML = renderMarkdown(markdown) + pendingSections(markdown, runSections);
         }
         output.innerHTML = renderMarkdown(markdown);
         final = await result.response;
@@ -744,7 +770,8 @@ async function explain(): Promise<void> {
     saveBtn.disabled = false;
     saveBtn.textContent = "Save to my library";
   } catch (e) {
-    if (!markdown) output.innerHTML = "";
+    // Keep any part of the answer that arrived, without the outline of sections that will now never come.
+    output.innerHTML = markdown ? renderMarkdown(markdown) : "";
     badge.hidden = true;
     $("route").hidden = true;
     showError(friendlyError(e));
@@ -891,7 +918,12 @@ async function renderLibrary(): Promise<void> {
       output.scrollIntoView({ behavior: "smooth", block: "start" });
     });
     li.querySelector(".lib-del")!.addEventListener("click", async () => {
-      await deleteExplainer(item.id);
+      li.remove(); // straight away; the list is redrawn from the database afterwards
+      try {
+        await deleteExplainer(item.id);
+      } catch (e) {
+        showError(`Couldn't delete: ${friendlyError(e)}`);
+      }
       await renderLibrary();
     });
     libraryList.appendChild(li);
@@ -949,7 +981,8 @@ $("edit-text").addEventListener("click", () => {
 });
 
 window.addEventListener("message", (e: MessageEvent) => {
-  if (!e.origin.startsWith("chrome-extension://")) return;
+  // Only the extension's side panel that embeds this page may send it text.
+  if (!embedded || e.source !== window.parent || !e.origin.startsWith("chrome-extension://")) return;
   const d = e.data as { type?: string; text?: unknown; title?: unknown; autoRun?: unknown };
   if (d?.type === "pp-status") {
     setPageStatus(typeof d.text === "string" ? d.text.slice(0, 300) : "");
@@ -992,7 +1025,15 @@ const booted = (async () => {
   renderChoices();
 })();
 if (embedded && window.parent !== window) window.parent.postMessage({ type: "pp-ready" }, "*");
-void booted.then(renderLibrary);
+// The library list opens the database, which starts App Check (and reCAPTCHA's cookie). So it is only loaded
+// when the reader gets near it, not on every page load.
+let libraryShown = false;
+new IntersectionObserver((entries, obs) => {
+  if (!entries.some((en) => en.isIntersecting)) return;
+  obs.disconnect();
+  libraryShown = true;
+  void booted.then(renderLibrary);
+}, { rootMargin: "200px" }).observe($("lib-title").closest("section")!);
 
 // ---------- Reading options: larger text, easy reading (kept in this browser) ----------
 function applyReading(): void {

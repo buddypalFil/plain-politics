@@ -61,3 +61,14 @@ test("a name given as your own is removed everywhere, public names are kept", ()
   assert.equal(redact(t), "My name is [name]. The minister, Sam Ortega, said no.\nYours,\n[name]");
   assert.equal(describeFindings(findPersonalData(t)), "1 name");
 });
+
+test("a name given in one text is removed from the other too (Compare)", async () => {
+  const { findPersonalData, redact, redactKnown } = await import("../src/privacy.ts");
+  const a = "My name is Jordan Patel and I live in Northvale.";
+  const b = "Jordan Patel says crime fell by 20%.";
+  const findings = findPersonalData(`${a}\n\n${b}`);
+  const ra = redactKnown(redact(a), findings);
+  const rb = redactKnown(redact(b), findings);
+  assert.ok(!ra.includes("Jordan") && !rb.includes("Jordan"), `${ra} | ${rb}`);
+  assert.equal(findPersonalData(`${ra}\n\n${rb}`).length, 0);
+});

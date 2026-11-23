@@ -8,7 +8,10 @@ export function friendlyMessage(m: string, ctx: { deviceReady: boolean; online: 
     return `Google's anti-abuse check couldn't confirm this browser, so the cloud AI was blocked. A strict ad or privacy blocker can cause this: allow google.com/recaptcha on this site and reload${orDevice}.`
       + (ctx.dev ? " (Running locally? Register the debug token from the console in Firebase > App Check.)" : "");
   }
-  if (/Failed to fetch|NetworkError|network error|ERR_INTERNET|ERR_NETWORK|load failed/i.test(m) || !ctx.online) {
+  if (/offline-no-account/.test(m)) {
+    return "You're offline, and this browser hasn't saved anything before: the first save needs a connection. Try again when you're online.";
+  }
+  if (/Failed to fetch|NetworkError|network error|network-request-failed|ERR_INTERNET|ERR_NETWORK|load failed/i.test(m) || !ctx.online) {
     return `The connection dropped before the answer arrived. Check your internet and try again${orDevice}.`;
   }
   if (/SAFETY|blocked|prohibited|RECITATION|PROHIBITED_CONTENT/i.test(m)) {

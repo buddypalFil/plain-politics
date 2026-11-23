@@ -13,7 +13,7 @@ service cloud.firestore {
         && request.resource.data.title is string && request.resource.data.title.size() <= 200
         && request.resource.data.snippet is string && request.resource.data.snippet.size() <= 400
         && request.resource.data.markdown is string && request.resource.data.markdown.size() <= 20000
-        && request.resource.data.lang in ['en', 'it', 'fr']
+        && request.resource.data.lang in ['en', 'it', 'fr', 'es', 'de']
         && request.resource.data.source in ['on_device', 'in_cloud']
         && request.resource.data.createdAt == request.time;
 

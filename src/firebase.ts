@@ -247,8 +247,12 @@ export async function hasLibraryUser(): Promise<boolean> {
 
 // Returns "queued" when offline: the save is kept on this device and sent when the connection is back.
 export async function saveExplainer(e: Omit<SavedExplainer, "id" | "createdAt">): Promise<"saved" | "queued"> {
+  const database = db(); // starts App Check before signing in
+  await auth.authStateReady();
+  // The very first save makes an anonymous account, which needs a connection.
+  if (!navigator.onLine && !auth.currentUser) throw new Error("offline-no-account");
   const user = await ensureUser();
-  const write = addDoc(collection(db(), "users", user.uid, "explainers"), {
+  const write = addDoc(collection(database, "users", user.uid, "explainers"), {
     ...e,
     createdAt: serverTimestamp(),
   });
@@ -280,7 +284,14 @@ export async function listExplainers(): Promise<SavedExplainer[]> {
   });
 }
 
+// Offline, the delete is applied to the copy on this device at once and sent when the connection is back.
 export async function deleteExplainer(id: string): Promise<void> {
+  const database = db();
   const user = await ensureUser();
-  await deleteDoc(doc(db(), "users", user.uid, "explainers", id));
+  const del = deleteDoc(doc(database, "users", user.uid, "explainers", id));
+  if (!navigator.onLine) {
+    void del.catch(() => {});
+    return;
+  }
+  await del;
 }

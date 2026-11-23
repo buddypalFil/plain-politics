@@ -70,14 +70,33 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // Hashed files in /assets never change: the stored copy first.
+  if (url.pathname.startsWith("/assets/")) {
+    event.respondWith((async () => {
+      const hit = await caches.match(url.pathname);
+      if (hit) return hit;
+      const res = await fetch(req);
+      if (res.ok) {
+        const copy = res.clone();
+        event.waitUntil(caches.open(CACHE).then((c) => c.put(url.pathname, copy)));
+      }
+      return res;
+    })());
+    return;
+  }
+
+  // Everything else (icons, manifest, favicon...) can change between releases: the network first, the stored
+  // copy only when offline. Fresh answers for the files we keep refresh the copy.
   event.respondWith((async () => {
-    const hit = await caches.match(url.pathname);
-    if (hit) return hit;
-    const res = await fetch(req);
-    if (res.ok && url.pathname.startsWith("/assets/")) {
-      const copy = res.clone();
-      event.waitUntil(caches.open(CACHE).then((c) => c.put(url.pathname, copy)));
+    try {
+      const res = await fetch(req);
+      if (res.ok && SHELL.includes(url.pathname)) {
+        const copy = res.clone();
+        event.waitUntil(caches.open(CACHE).then((c) => c.put(url.pathname, copy)));
+      }
+      return res;
+    } catch {
+      return (await caches.match(url.pathname)) || Response.error();
     }
-    return res;
   })());
 });
