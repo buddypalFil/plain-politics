@@ -75,7 +75,7 @@ button, select, textarea { font: inherit; color: inherit; }
 .ear.l { justify-self: start; }
 .ear.r { justify-self: end; }
 .mast h1 { margin: 0; font: 400 84px/1 var(--display); letter-spacing: 0; animation: ink-in .9s ease-out both; }
-@keyframes ink-in { from { opacity: 0; filter: blur(7px); transform: scale(1.03); } }
+@keyframes ink-in { from { opacity: .18; filter: blur(7px); transform: scale(1.03); } }
 .logo { display: none; }
 .tagline { margin: 10px 0 0; font: italic 400 19px/1.3 var(--serif); color: var(--ink-2); }
 .edition { display: flex; justify-content: space-between; align-items: center; gap: 12px; border-top: 3px solid var(--ink); border-bottom: 1px solid var(--ink); padding: 5px 0 4px; font-size: 10.5px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-2); }
@@ -324,6 +324,31 @@ button.secondary:hover { background: var(--accent-soft); }
 .lib-item button.link:hover { text-decoration: underline; }
 .lib-meta { color: var(--muted); font: 500 12px/1.4 var(--sans); margin-top: 3px; }
 .lib-del { background: none; border: 0; color: var(--muted); cursor: pointer; font: 500 12px/1 var(--sans); padding: 2px 0; }
+
+/* ---------- How it works ---------- */
+.how { margin-top: 34px; }
+.how > .kick { border-top: 3px solid var(--ink); padding-top: 12px; }
+.how-flow { list-style: none; margin: 10px 0 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr 1.6fr 1fr; gap: 0; counter-reset: how; }
+.how-step { position: relative; padding: 4px 26px 4px 0; counter-increment: how; }
+.how-step + .how-step { padding-left: 26px; border-left: 1px solid var(--line); }
+.how-step::before { content: counter(how); display: block; font: 800 34px/1 var(--serif); color: var(--ink); margin-bottom: 6px; }
+.how-step:not(:last-child)::after { content: ""; position: absolute; right: -7px; top: 12px; width: 12px; height: 12px; border-top: 2px solid var(--ink); border-right: 2px solid var(--ink); transform: rotate(45deg); background: var(--bg); z-index: 1; }
+.how b { display: block; font: 800 12px/1.3 var(--sans); letter-spacing: .14em; text-transform: uppercase; margin-bottom: 4px; }
+.how span { display: block; font: 400 14.5px/1.45 var(--serif); color: var(--ink-2); }
+.how-split { display: grid; gap: 10px; }
+.how-split::before { grid-column: 1; }
+.how-route { padding: 8px 10px; border: 2px solid var(--ink); }
+.how-route.cloud { border-color: var(--cloud); }
+.how-route.cloud b { color: var(--cloud); }
+.how-note { margin: 16px 0 0; padding-top: 10px; border-top: 1px solid var(--line); font: 400 14.5px/1.5 var(--serif); color: var(--ink-2); }
+.how-note b { display: inline; font: inherit; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--ink); }
+.embed .how { display: none; }
+@media screen and (max-width: 860px) {
+  .how-flow { grid-template-columns: 1fr; }
+  .how-step, .how-step + .how-step { padding: 12px 0 14px; border-left: 0; border-top: 1px solid var(--line); }
+  .how-step:first-child { border-top: 0; }
+  .how-step:not(:last-child)::after { right: auto; left: 50%; top: auto; bottom: -7px; transform: rotate(135deg); }
+}
 
 /* ---------- Footer ---------- */
 .foot { margin-top: 34px; padding-bottom: 30px; color: var(--muted); font: 500 12px/1.5 var(--sans); }

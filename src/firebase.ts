@@ -5,9 +5,9 @@
 
 import { initializeApp } from "firebase/app";
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
-import { getAI, getGenerativeModel, GoogleAIBackend, type GenerativeModel } from "firebase/ai";
+import { getAI, getGenerativeModel, GoogleAIBackend, type AI, type GenerativeModel } from "firebase/ai";
 import { getRemoteConfig, fetchAndActivate, getValue } from "firebase/remote-config";
-import { getAuth, signInAnonymously, type User } from "firebase/auth";
+import { initializeAuth, indexedDBLocalPersistence, browserLocalPersistence, signInAnonymously, type User } from "firebase/auth";
 import {
   initializeFirestore,
   persistentLocalCache,
@@ -37,7 +37,12 @@ if (import.meta.env.DEV) {
   (self as unknown as { FIREBASE_APPCHECK_DEBUG_TOKEN: string | boolean }).FIREBASE_APPCHECK_DEBUG_TOKEN =
     import.meta.env.VITE_APPCHECK_DEBUG_TOKEN || true;
 }
-if (isConfigured) {
+// App Check (and with it reCAPTCHA, which sets a Google cookie) starts only the first time the page talks to
+// the AI or the library: explain, check a claim, read a photo or video, save. Just opening the page never loads it.
+let appCheckOn = false;
+function startAppCheck(): void {
+  if (appCheckOn || !isConfigured) return;
+  appCheckOn = true;
   initializeAppCheck(app, {
     provider: new ReCaptchaEnterpriseProvider(recaptchaSiteKey),
     isTokenAutoRefreshEnabled: true,
@@ -77,11 +82,16 @@ export async function loadSettings(): Promise<Settings> {
 }
 
 // ---------- AI Logic ----------
-const ai = getAI(app, { backend: new GoogleAIBackend() });
+// Created on first use, after App Check, so every cloud call carries its token.
+let aiService: AI | null = null;
+function ai(): AI {
+  startAppCheck();
+  return (aiService ??= getAI(app, { backend: new GoogleAIBackend() }));
+}
 
 // One model object per request, because the mode and language can change.
 export function makeModel(mode: Mode, lang: Lang, cloudModel: string): GenerativeModel {
-  return getGenerativeModel(ai, {
+  return getGenerativeModel(ai(), {
     mode,
     inCloudParams: {
       model: cloudModel,
@@ -100,7 +110,7 @@ export function makeModel(mode: Mode, lang: Lang, cloudModel: string): Generativ
 // Copies the text out of a photo (a leaflet, a poster, a newspaper cutting). The text then goes into the
 // text box, where the reader checks it and the privacy guard scans it before anything is explained.
 export async function readPhoto(jpegBase64: string, mode: Mode, cloudModel: string): Promise<{ text: string; ranOn: "on_device" | "in_cloud" }> {
-  const model = getGenerativeModel(ai, {
+  const model = getGenerativeModel(ai(), {
     mode,
     inCloudParams: { model: cloudModel, generationConfig: { temperature: 0, maxOutputTokens: 2000 } },
     onDeviceParams: {
@@ -126,7 +136,7 @@ export async function readPhoto(jpegBase64: string, mode: Mode, cloudModel: stri
 export type MediaSource = { kind: "file"; mimeType: string; base64: string } | { kind: "youtube"; url: string };
 
 export async function readMedia(src: MediaSource, cloudModel: string): Promise<string> {
-  const model = getGenerativeModel(ai, {
+  const model = getGenerativeModel(ai(), {
     model: cloudModel,
     generationConfig: { temperature: 0, maxOutputTokens: 4000 },
   });
@@ -162,7 +172,7 @@ export interface ClaimCheck {
 export async function checkClaim(claim: string, lang: Lang, langName: string, cloudModel: string, grounded: boolean, mode: Mode = "prefer_on_device"): Promise<ClaimCheck> {
   const safeClaim = claim.replace(/"/g, "'");
   if (grounded) {
-    const model = getGenerativeModel(ai, {
+    const model = getGenerativeModel(ai(), {
       model: cloudModel,
       tools: [{ googleSearch: {} }],
       generationConfig: { temperature: 0.2, maxOutputTokens: 400 },
@@ -202,9 +212,15 @@ export async function checkClaim(claim: string, lang: Lang, langName: string, cl
 }
 
 // ---------- Library (Anonymous Auth + Firestore) ----------
-const auth = getAuth(app);
+// Anonymous sign-in for the library. initializeAuth without a popup/redirect helper, so the sign-in iframe
+// (about 95 KB) is never loaded: anonymous sign-in doesn't need it.
+const auth = initializeAuth(app, { persistence: [indexedDBLocalPersistence, browserLocalPersistence] });
 // The library keeps a copy on this device, so saved explainers open offline; saves made offline sync later.
-const db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
+let dbService: ReturnType<typeof initializeFirestore> | null = null;
+function db(): ReturnType<typeof initializeFirestore> {
+  startAppCheck();
+  return (dbService ??= initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) }));
+}
 
 export interface SavedExplainer {
   id: string;
@@ -232,7 +248,7 @@ export async function hasLibraryUser(): Promise<boolean> {
 // Returns "queued" when offline: the save is kept on this device and sent when the connection is back.
 export async function saveExplainer(e: Omit<SavedExplainer, "id" | "createdAt">): Promise<"saved" | "queued"> {
   const user = await ensureUser();
-  const write = addDoc(collection(db, "users", user.uid, "explainers"), {
+  const write = addDoc(collection(db(), "users", user.uid, "explainers"), {
     ...e,
     createdAt: serverTimestamp(),
   });
@@ -248,7 +264,7 @@ export async function listExplainers(): Promise<SavedExplainer[]> {
   await auth.authStateReady();
   const user = auth.currentUser;
   if (!user) return [];
-  const q = query(collection(db, "users", user.uid, "explainers"), orderBy("createdAt", "desc"), limit(20));
+  const q = query(collection(db(), "users", user.uid, "explainers"), orderBy("createdAt", "desc"), limit(20));
   const snap = await getDocs(q);
   return snap.docs.map((d) => {
     const data = d.data();
@@ -266,5 +282,5 @@ export async function listExplainers(): Promise<SavedExplainer[]> {
 
 export async function deleteExplainer(id: string): Promise<void> {
   const user = await ensureUser();
-  await deleteDoc(doc(db, "users", user.uid, "explainers", id));
+  await deleteDoc(doc(db(), "users", user.uid, "explainers", id));
 }
