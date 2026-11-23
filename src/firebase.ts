@@ -9,7 +9,9 @@ import { getAI, getGenerativeModel, GoogleAIBackend, type GenerativeModel } from
 import { getRemoteConfig, fetchAndActivate, getValue } from "firebase/remote-config";
 import { getAuth, signInAnonymously, type User } from "firebase/auth";
 import {
-  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
   collection,
   addDoc,
   deleteDoc,
@@ -45,6 +47,8 @@ if (isConfigured) {
 // ---------- Remote Config ----------
 const remoteConfig = getRemoteConfig(app);
 remoteConfig.settings.minimumFetchIntervalMillis = import.meta.env.DEV ? 0 : 60 * 60 * 1000;
+// Don't let a slow or missing connection hold up the page: the defaults below are good enough.
+remoteConfig.settings.fetchTimeoutMillis = 5000;
 remoteConfig.defaultConfig = {
   cloud_model: "gemini-3.5-flash-lite",
   device_char_limit: 20000,
@@ -58,7 +62,7 @@ export interface Settings {
 }
 
 export async function loadSettings(): Promise<Settings> {
-  if (isConfigured) {
+  if (isConfigured && navigator.onLine) {
     try {
       await fetchAndActivate(remoteConfig);
     } catch {
@@ -150,7 +154,8 @@ export async function checkClaim(claim: string, lang: Lang, langName: string, cl
 
 // ---------- Library (Anonymous Auth + Firestore) ----------
 const auth = getAuth(app);
-const db = getFirestore(app);
+// The library keeps a copy on this device, so saved explainers open offline; saves made offline sync later.
+const db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
 
 export interface SavedExplainer {
   id: string;
@@ -175,12 +180,19 @@ export async function hasLibraryUser(): Promise<boolean> {
   return auth.currentUser !== null;
 }
 
-export async function saveExplainer(e: Omit<SavedExplainer, "id" | "createdAt">): Promise<void> {
+// Returns "queued" when offline: the save is kept on this device and sent when the connection is back.
+export async function saveExplainer(e: Omit<SavedExplainer, "id" | "createdAt">): Promise<"saved" | "queued"> {
   const user = await ensureUser();
-  await addDoc(collection(db, "users", user.uid, "explainers"), {
+  const write = addDoc(collection(db, "users", user.uid, "explainers"), {
     ...e,
     createdAt: serverTimestamp(),
   });
+  if (!navigator.onLine) {
+    void write.catch(() => {});
+    return "queued";
+  }
+  await write;
+  return "saved";
 }
 
 export async function listExplainers(): Promise<SavedExplainer[]> {

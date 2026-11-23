@@ -6,6 +6,9 @@
   <title>Plain Politics</title>
   <meta name="description" content="Paste a news article, speech, bill or manifesto and get a neutral explainer in plain words. Runs on your device when it can, in the cloud when it needs to." />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-title" content="Plain Politics" />
   <meta name="theme-color" content="#f3efe6" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#141311" media="(prefers-color-scheme: dark)" />
   <meta property="og:type" content="website" />
@@ -27,10 +30,12 @@
       <div id="device-pill" class="pill" role="status">Checking on-device AI…</div>
     </div>
     <header class="mast">
+      <div class="ear l" aria-hidden="true"><b>Free to read</b>No sign-up. No ads.</div>
       <h1><svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><rect x="2" y="2" width="60" height="60" rx="14" fill="#161513"/><g fill="none" stroke="#f4f0e8" stroke-width="4.2" stroke-linecap="round"><path d="M10 17h14c7 0 8 15 14 15"/><path d="M15 27h9c5 0 7 5 12 5"/><path d="M10 37h14c5 0 7-5 12-5"/><path d="M19 47h5c7 0 8-15 14-15"/><path d="M37 32h8"/></g><circle cx="52" cy="32" r="4.4" fill="#c4562a"/></svg>Plain Politics</h1>
+      <div class="ear r" aria-hidden="true"><b>Today's forecast</b>Plain, with a chance of facts.</div>
       <p class="tagline">Political text, explained in plain words.</p>
     </header>
-    <div class="rule2" aria-hidden="true"></div>
+    <div class="edition" aria-hidden="true"><span id="edition-no">Vol. I</span><span class="ed-mid">The plain-words edition</span><span>London</span></div>
     <nav class="sections" aria-label="Kind of text">
       <div class="tabs" role="group" aria-label="Kind of text" id="mode-seg">
         <button type="button" data-mode="today" aria-pressed="true">Today</button>
@@ -38,6 +43,7 @@
       </div>
       <span class="sep" aria-hidden="true"></span>
       <a href="#lib-title" class="navlink">My library</a>
+      <button id="install" class="navlink install" type="button" hidden>Install the app</button>
     </nav>
   </div>
 

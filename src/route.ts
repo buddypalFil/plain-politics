@@ -12,6 +12,8 @@ export interface RouteInput {
   deviceStatus: DeviceStatus;
   // True when the privacy guard found personal details (email, phone, address…).
   personal?: boolean;
+  // True when the browser has no internet: only the on-device model can run.
+  offline?: boolean;
 }
 
 export type Route =
@@ -19,7 +21,19 @@ export type Route =
   | { ok: false; reason: string; privacy?: true };
 
 export function chooseRoute(input: RouteInput): Route {
-  const { choice, chars, deviceCharLimit, deviceStatus, personal } = input;
+  const { choice, chars, deviceCharLimit, deviceStatus, personal, offline } = input;
+
+  // Offline: the cloud can't be reached, so the on-device model is the only way, whatever was chosen.
+  if (offline) {
+    if (deviceStatus === "available" && chars <= deviceCharLimit) {
+      return { ok: true, mode: "only_on_device", reason: "You're offline, so this ran on your device." };
+    }
+    const why =
+      deviceStatus !== "available"
+        ? "on-device AI isn't ready in this browser"
+        : `this text is too long for the on-device model (limit about ${deviceCharLimit.toLocaleString("en-GB")} characters)`;
+    return { ok: false, reason: `You're offline, and ${why}. Connect to the internet to use the cloud${deviceStatus === "available" ? ", or shorten the text" : ""}.` };
+  }
 
   // Privacy guard: a text with personal details never goes to the cloud.
   // It runs on this device only (no cloud fallback), or the details must be removed first.

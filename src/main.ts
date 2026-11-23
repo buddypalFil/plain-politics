@@ -137,7 +137,8 @@ output.addEventListener("click", async (e) => {
     : `<p class="claim-note">Working out how to check it${deviceStatus === "available" ? ", on your device" : ""}…</p>`;
   try {
     // Respect "Run on": "This device only" never falls back to the cloud.
-    const run = runSel.value;
+    // Offline, only the device can answer, so it is treated like "This device only".
+    const run = navigator.onLine ? runSel.value : "device";
     const mode = run === "device" ? "only_on_device" : run === "cloud" ? "only_in_cloud" : "prefer_on_device";
     const r = await checkClaim(claim, lang, LANGUAGE_NAMES[lang], settings.cloudModel, settings.claimGrounding && run !== "device", mode);
     const list = r.sources.length
@@ -286,6 +287,19 @@ async function refreshDevice(): Promise<void> {
   setupBtn.hidden = true;
   deviceHelp.hidden = true;
 
+  // Offline: the page still works (the service worker keeps a copy), but only the on-device model can run.
+  if (!navigator.onLine) {
+    pill.textContent = deviceStatus === "available" ? "Offline · on-device AI ready" : "Offline";
+    pill.classList.add(deviceStatus === "available" ? "ready" : "cloud");
+    if (deviceStatus !== "available") {
+      deviceHelp.hidden = false;
+      deviceHelp.textContent = "You're offline. Explaining needs the AI built into Chrome on this device, which isn't ready here. Connect to the internet to use the cloud.";
+    } else {
+      void warmUpDevice(lang);
+    }
+    return;
+  }
+
   if (deviceStatus === "available") {
     pill.textContent = "On-device AI ready";
     pill.classList.add("ready");
@@ -307,6 +321,8 @@ langSel.addEventListener("change", async () => {
   await refreshDevice();
   renderChoices();
 });
+window.addEventListener("online", () => void refreshDevice().then(renderLibrary));
+window.addEventListener("offline", () => void refreshDevice());
 
 setupBtn.addEventListener("click", async () => {
   setupBtn.disabled = true;
@@ -346,6 +362,7 @@ async function explain(): Promise<void> {
     deviceCharLimit: settings.deviceCharLimit,
     deviceStatus,
     personal: findings.length > 0,
+    offline: !navigator.onLine,
   });
   if (!route.ok) {
     showError(route.reason);
@@ -445,7 +462,7 @@ saveBtn.addEventListener("click", async () => {
   if (!lastResult) return;
   saveBtn.disabled = true;
   try {
-    await saveExplainer({
+    const saved = await saveExplainer({
       // Personal details never reach the library either.
       title: redactKnown(firstLine(lastResult.markdown), lastResult.findings),
       snippet: redact(lastResult.text, lastResult.findings).slice(0, 280),
@@ -453,7 +470,7 @@ saveBtn.addEventListener("click", async () => {
       source: lastResult.source,
       markdown: redactKnown(lastResult.markdown, lastResult.findings),
     });
-    saveBtn.textContent = "Saved ✓";
+    saveBtn.textContent = saved === "queued" ? "Saved ✓ (syncs when online)" : "Saved ✓";
     await renderLibrary();
   } catch (e) {
     saveBtn.disabled = false;
@@ -599,6 +616,13 @@ window.addEventListener("message", (e: MessageEvent) => {
 // Settings and the on-device check take a moment; the page can show (and the panel can
 // say "ready") straight away, and an explainer waits for them.
 $("today").textContent = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+// Edition number for the masthead: No. 1 was launch day (18 Nov 2026), one volume per year.
+{
+  const now = new Date();
+  const no = Math.max(1, Math.floor((now.getTime() - new Date(2026, 10, 18).getTime()) / 864e5) + 1);
+  const vol = ["I", "II", "III", "IV", "V"][Math.min(4, Math.max(0, now.getFullYear() - 2026))];
+  $("edition-no").textContent = `Vol. ${vol} · No. ${no}`;
+}
 const booted = (async () => {
   updateCount();
   renderChoices();
@@ -608,3 +632,25 @@ const booted = (async () => {
 })();
 if (embedded && window.parent !== window) window.parent.postMessage({ type: "pp-ready" }, "*");
 void booted.then(renderLibrary);
+
+// ---------- Works offline, installable ----------
+// The service worker keeps a copy of the site on this device (see public/sw.js). Not in the extension's panel,
+// which already ships with the extension, and not in development, where files change all the time.
+if ("serviceWorker" in navigator && import.meta.env.PROD && !embedded) {
+  window.addEventListener("load", () => void navigator.serviceWorker.register("/sw.js").catch(() => {}));
+}
+// Chrome offers to install the site as an app; show our own button for it next to My library.
+const installBtn = $<HTMLButtonElement>("install");
+let installPrompt: (Event & { prompt(): Promise<void> }) | null = null;
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  installPrompt = e as Event & { prompt(): Promise<void> };
+  installBtn.hidden = embedded;
+});
+installBtn.addEventListener("click", async () => {
+  if (!installPrompt) return;
+  await installPrompt.prompt();
+  installPrompt = null;
+  installBtn.hidden = true;
+});
+window.addEventListener("appinstalled", () => (installBtn.hidden = true));

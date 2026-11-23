@@ -11,6 +11,20 @@ test("auto + device ready -> device first", () => {
   assert.equal(r.ok && r.mode, "prefer_on_device");
 });
 
+test("offline + device ready -> device only, even if cloud was chosen", () => {
+  assert.equal(chooseRoute({ ...base, offline: true }).ok && chooseRoute({ ...base, offline: true }).mode, "only_on_device");
+  const c = chooseRoute({ ...base, choice: "cloud", offline: true });
+  assert.equal(c.ok && c.mode, "only_on_device");
+});
+
+test("offline without a device model, or text too long -> clear error, nothing sent", () => {
+  const none = chooseRoute({ ...base, deviceStatus: "unavailable", offline: true });
+  assert.equal(none.ok, false);
+  assert.match(!none.ok ? none.reason : "", /offline/);
+  const long = chooseRoute({ ...base, chars: 50000, offline: true });
+  assert.equal(long.ok, false);
+});
+
 test("cloud choice always goes to the cloud", () => {
   const r = chooseRoute({ ...base, choice: "cloud" });
   assert.equal(r.ok && r.mode, "only_in_cloud");
