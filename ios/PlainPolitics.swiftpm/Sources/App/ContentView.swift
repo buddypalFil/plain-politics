@@ -14,6 +14,7 @@ struct ContentView: View {
     @State private var explainedText = ""
     @State private var spinKind: SpinKind?
     @FocusState private var editing: Bool
+    @Environment(\.scenePhase) private var scenePhase
 
     private var findings: [Finding] { findPersonalData(text) }
     private var deviceAI: DeviceAI { engine.deviceAI }
@@ -35,9 +36,22 @@ struct ContentView: View {
             .padding(.bottom, 40)
         }
         .scrollDismissesKeyboard(.interactively)
+        .toolbar {
+            // A text editor has no Return-to-close, so give the keyboard a Done button.
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { editing = false }.bold()
+            }
+        }
         .background(Color.paper.ignoresSafeArea())
         .foregroundStyle(Color.ink)
         .tint(.ink)
+        // Make sure Apple's model really answers before the masthead says it's ready (checked again on return,
+        // e.g. after turning on Apple Intelligence or once its model has downloaded).
+        .task { await engine.checkDevice() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { Task { await engine.checkDevice() } }
+        }
     }
 
     // ---------- Masthead ----------
@@ -113,7 +127,9 @@ struct ContentView: View {
                     Text("Privacy guard is on: personal details never go to the cloud.").foregroundStyle(Color.ink2)
                 } else {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Found \(describeFindings(findings)). This text will only run on your device.")
+                        Text(deviceAI.usable
+                             ? "Found \(describeFindings(findings)). This text will only run on your device."
+                             : "Found \(describeFindings(findings)). These never go to the cloud, and on-device AI isn't ready here, so remove them to explain this text.")
                         Button("Remove them") { text = redact(text) }.bold().underline()
                     }
                     .foregroundStyle(Color.rust)
@@ -200,7 +216,7 @@ struct ContentView: View {
             refusal = ("Paste a longer text first (a paragraph or more), or pick a sample.", false)
             return
         }
-        let route = chooseRoute(RouteInput(choice: run, chars: t.count, deviceReady: deviceAI.ready,
+        let route = chooseRoute(RouteInput(choice: run, chars: t.count, deviceReady: deviceAI.usable,
                                            personal: !findPersonalData(t).isEmpty, offline: !NetworkWatch.shared.online))
         switch route {
         case .refuse(let reason, let privacy):
