@@ -119,6 +119,32 @@ export async function readPhoto(jpegBase64: string, mode: Mode, cloudModel: stri
   return { text: result.response.text().trim(), ranOn: result.response.inferenceSource === "on_device" ? "on_device" : "in_cloud" };
 }
 
+// ---------- Read a video or recording ----------
+// Writes out what is said in a speech video, an audio recording or a public YouTube video. Only cloud
+// Gemini can take video and sound, so this always runs in the cloud; the page asks first for files.
+// The transcript then goes into the text box like any other text.
+export type MediaSource = { kind: "file"; mimeType: string; base64: string } | { kind: "youtube"; url: string };
+
+export async function readMedia(src: MediaSource, cloudModel: string): Promise<string> {
+  const model = getGenerativeModel(ai, {
+    model: cloudModel,
+    generationConfig: { temperature: 0, maxOutputTokens: 4000 },
+  });
+  const prompt = [
+    "Write out what is said in this video or recording, as close to word for word as you can, in plain paragraphs.",
+    "Only if more than one person speaks, start each turn with the speaker's name if it is clear, or Speaker 1, Speaker 2.",
+    "Add text that matters and is shown on screen (slides, banners, captions with names or numbers) in square brackets.",
+    "Do not summarise, explain, translate or comment. Write it in the language that is spoken.",
+    "If nothing is said and no text is shown, reply with exactly: NO TEXT",
+  ].join("\n");
+  const media =
+    src.kind === "youtube"
+      ? { type: "fileData" as const, fileData: { mimeType: "video/*", fileUri: src.url } }
+      : { type: "inlineData" as const, inlineData: { mimeType: src.mimeType, data: src.base64 } };
+  const result = await model.generateContent([media, { type: "text", text: prompt }]);
+  return result.response.text().trim();
+}
+
 // ---------- Check one claim ----------
 // Two ways, switched by Remote Config ("claim_grounding"):
 //  - grounded: only the chosen sentence goes to Gemini in the cloud with Google Search, and comes back with

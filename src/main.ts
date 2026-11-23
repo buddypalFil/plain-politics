@@ -13,6 +13,7 @@ import { getDeviceStatus, getImageDeviceStatus, hasPromptApi, warmUpDevice } fro
 import { readingAge } from "./readability.ts";
 import { SAMPLES, COMPARE_SAMPLES } from "./samples.ts";
 import { drawFrontPage } from "./share.ts";
+import { youtubeUrl } from "./youtube.ts";
 import { findSpin, countByKind, highlightHtml, SPIN_KINDS, type SpinKind } from "./spin.ts";
 import { findPersonalData, describeFindings, redact, redactKnown, type Finding } from "./privacy.ts";
 import {
@@ -25,6 +26,8 @@ import {
   hasLibraryUser,
   checkClaim,
   readPhoto,
+  readMedia,
+  type MediaSource,
   type Settings,
   type SavedExplainer,
 } from "./firebase.ts";
@@ -453,7 +456,25 @@ const photoBtn = $<HTMLButtonElement>("photo");
 const photoFile = $<HTMLInputElement>("photo-file");
 const photoStatus = $("photo-status");
 const photoConfirm = $("photo-confirm");
-let pendingPhoto: string | null = null;
+// What runs if the reader agrees to send something to the cloud (a photo, a video or a recording).
+let pendingSend: (() => void) | null = null;
+function askToSend(text: string, button: string, run: () => void): void {
+  $("confirm-text").textContent = text;
+  $("photo-send").textContent = button;
+  pendingSend = run;
+  setPhotoStatus("");
+  photoConfirm.hidden = false;
+}
+// Puts text read from a photo, video or recording into the box (Text B if comparing and A is filled).
+function fillFromSource(text: string, where: string): void {
+  const target = comparing() && input.value.trim() && !input2.value.trim() ? input2 : input;
+  target.value = text;
+  sourceNote.hidden = true;
+  updateCount();
+  updatePrivacy();
+  setPhotoStatus(`${where} Check the text, then press ${explainLabel()}.`);
+  target.focus();
+}
 function setPhotoStatus(text: string): void {
   photoStatus.textContent = text;
   photoStatus.hidden = !text;
@@ -479,14 +500,7 @@ async function runPhoto(jpeg: string, mode: "only_on_device" | "only_in_cloud"):
       setPhotoStatus("No readable text found. Try a sharper photo, taken straight on, in good light.");
       return;
     }
-    // When comparing, a second photo fills Text B.
-    const target = comparing() && input.value.trim() && !input2.value.trim() ? input2 : input;
-    target.value = r.text;
-    sourceNote.hidden = true;
-    updateCount();
-    updatePrivacy();
-    setPhotoStatus(`Read ${r.ranOn === "on_device" ? "on your device" : "in the cloud"}. Check the text against the photo, then press ${explainLabel()}.`);
-    target.focus();
+    fillFromSource(r.text, `Read ${r.ranOn === "on_device" ? "on your device" : "in the cloud"}.`);
   } catch (e) {
     setPhotoStatus(`Couldn't read the photo: ${friendlyError(e)}`);
   } finally {
@@ -512,17 +526,109 @@ photoFile.addEventListener("change", async () => {
   if (canRead && runSel.value !== "cloud") return runPhoto(jpeg, "only_on_device");
   if (!navigator.onLine) return setPhotoStatus("You're offline, and this browser can't read photos on your device.");
   if (runSel.value === "device") return setPhotoStatus("You chose This device only, but this browser can't read photos on your device.");
-  pendingPhoto = jpeg;
-  setPhotoStatus("");
-  photoConfirm.hidden = false;
+  askToSend(
+    "This browser can't read photos on your device, so the photo would go to Google's cloud as it is. The privacy guard can't check photos for names or addresses.",
+    "Send the photo to the cloud",
+    () => void runPhoto(jpeg, "only_in_cloud"),
+  );
 });
 $("photo-send").addEventListener("click", () => {
-  if (pendingPhoto) void runPhoto(pendingPhoto, "only_in_cloud");
-  pendingPhoto = null;
+  const run = pendingSend;
+  pendingSend = null;
+  photoConfirm.hidden = true;
+  run?.();
 });
 $("photo-cancel").addEventListener("click", () => {
-  pendingPhoto = null;
+  pendingSend = null;
   photoConfirm.hidden = true;
+});
+
+// ---------- Read a speech video, a recording or a YouTube link (cloud only) ----------
+const videoBtn = $<HTMLButtonElement>("video");
+const videoFile = $<HTMLInputElement>("video-file");
+const ytRow = $("yt-row");
+const ytUrl = $<HTMLInputElement>("yt-url");
+// Files are sent inside the request, which Google limits to about 20 MB; base64 makes a file a third bigger.
+const MAX_MEDIA_MB = 14;
+// Gemini's names for some types browsers report differently.
+const MEDIA_TYPES: Record<string, string> = { "video/quicktime": "video/mov", "audio/x-m4a": "audio/mp4", "audio/mpeg": "audio/mp3", "audio/x-wav": "audio/wav" };
+function mediaBlocked(): string | null {
+  if (!navigator.onLine) return "You're offline. Videos and recordings can only be read in the cloud.";
+  if (runSel.value === "device") return "You chose This device only, but videos and recordings can only be read in the cloud.";
+  return null;
+}
+async function runMedia(src: MediaSource, label: string): Promise<void> {
+  for (const b of [photoBtn, videoBtn, $<HTMLButtonElement>("yt"), $<HTMLButtonElement>("yt-go")]) b.disabled = true;
+  const started = performance.now();
+  const tick = () => setPhotoStatus(`Listening to the ${label} in the cloud… ${Math.round((performance.now() - started) / 1000)} s (a 5-minute speech takes about half a minute)`);
+  tick();
+  const timer = setInterval(tick, 1000);
+  try {
+    const text = await readMedia(src, settings.cloudModel);
+    if (!text || /^NO TEXT\.?$/i.test(text)) {
+      setPhotoStatus(`Nothing to read: no speech or text was found in the ${label}.`);
+      return;
+    }
+    fillFromSource(text, `Written out in the cloud from the ${label}.`);
+    ytRow.hidden = true;
+  } catch (e) {
+    setPhotoStatus(`Couldn't read the ${label}: ${friendlyError(e)}`);
+  } finally {
+    clearInterval(timer);
+    for (const b of [photoBtn, videoBtn, $<HTMLButtonElement>("yt"), $<HTMLButtonElement>("yt-go")]) b.disabled = false;
+  }
+}
+videoBtn.addEventListener("click", () => videoFile.click());
+videoFile.addEventListener("change", async () => {
+  const file = videoFile.files?.[0];
+  videoFile.value = "";
+  if (!file) return;
+  await booted;
+  hideError();
+  photoConfirm.hidden = true;
+  const blocked = mediaBlocked();
+  if (blocked) return setPhotoStatus(blocked);
+  if (file.size > MAX_MEDIA_MB * 1024 * 1024) {
+    return setPhotoStatus(`That file is ${Math.round(file.size / 1048576)} MB; the limit is ${MAX_MEDIA_MB} MB. Use a shorter clip, or put it on YouTube and paste the link.`);
+  }
+  const mimeType = MEDIA_TYPES[file.type] ?? file.type;
+  if (!/^(video|audio)\//.test(mimeType)) return setPhotoStatus("That file isn't a video or a sound recording.");
+  const label = mimeType.startsWith("audio/") ? "recording" : "video";
+  askToSend(
+    `Videos and recordings can only be read in Google's cloud, so this ${label} would be sent there as it is. The privacy guard can't check it for names or voices. Fine for a public speech; think twice for a private recording.`,
+    `Send the ${label} to the cloud`,
+    async () => {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload = () => resolve(String(fr.result).split(",")[1]);
+        fr.onerror = () => reject(fr.error);
+        fr.readAsDataURL(file);
+      });
+      await runMedia({ kind: "file", mimeType, base64 }, label);
+    },
+  );
+});
+$("yt").addEventListener("click", () => {
+  ytRow.hidden = !ytRow.hidden;
+  if (!ytRow.hidden) ytUrl.focus();
+});
+async function readYoutube(): Promise<void> {
+  await booted;
+  hideError();
+  photoConfirm.hidden = true;
+  const url = youtubeUrl(ytUrl.value);
+  if (!url) return setPhotoStatus("That doesn't look like a YouTube video link. Copy it from the Share button on YouTube.");
+  const blocked = mediaBlocked();
+  if (blocked) return setPhotoStatus(blocked);
+  // A public YouTube video is already public, so it goes to the cloud without asking; the page says so.
+  await runMedia({ kind: "youtube", url }, "video");
+}
+$("yt-go").addEventListener("click", () => void readYoutube());
+ytUrl.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    void readYoutube();
+  }
 });
 
 // ---------- Explain ----------

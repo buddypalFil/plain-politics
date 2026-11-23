@@ -80,13 +80,22 @@
       <p id="source-note" class="hint small source-note" hidden></p>
       <div id="samples" class="samples"></div>
       <div id="photo-row" class="photo-row">
-        <button id="photo" class="link-btn" type="button">Read a photo of a leaflet or poster</button>
+        <span class="read-label">Or read</span>
+        <button id="photo" class="link-btn" type="button">a photo of a leaflet</button>
+        <button id="video" class="link-btn" type="button">a speech video or recording</button>
+        <button id="yt" class="link-btn" type="button">a YouTube link</button>
         <input id="photo-file" type="file" accept="image/*" hidden />
+        <input id="video-file" type="file" accept="video/*,audio/*" hidden />
+      </div>
+      <div id="yt-row" class="yt-row" hidden>
+        <label class="sr-only" for="yt-url">YouTube link</label>
+        <input id="yt-url" type="url" inputmode="url" placeholder="Paste a YouTube link…" />
+        <button id="yt-go" class="secondary" type="button">Read it</button>
       </div>
       <p id="photo-status" class="photo-status" role="status" hidden></p>
       <div id="photo-confirm" class="photo-confirm" hidden>
-        <p>This browser can't read photos on your device, so the photo would go to Google's cloud as it is. The privacy guard can't check photos for names or addresses.</p>
-        <button id="photo-send" class="secondary" type="button">Send the photo to the cloud</button>
+        <p id="confirm-text"></p>
+        <button id="photo-send" class="secondary" type="button">Send it to the cloud</button>
         <button id="photo-cancel" class="link-btn" type="button">Cancel</button>
       </div>
       <label id="label-a" class="tlabel" for="input" hidden>Text A</label>

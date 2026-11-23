@@ -167,3 +167,18 @@ test("spot the spin: highlighted HTML is escaped", async () => {
   assert.ok(html.includes("&amp; <mark"));
   assert.ok(!html.includes("<b>"));
 });
+
+test("youtube links: common forms become the standard address, others are refused", async () => {
+  const { youtubeUrl } = await import("../src/youtube.ts");
+  const want = "https://www.youtube.com/watch?v=CHAyepp7ypY";
+  for (const u of [
+    "https://www.youtube.com/watch?v=CHAyepp7ypY",
+    "youtube.com/watch?v=CHAyepp7ypY&t=30s",
+    "https://www.youtube.com/watch?feature=share&v=CHAyepp7ypY",
+    "https://youtu.be/CHAyepp7ypY?si=abc",
+    "https://m.youtube.com/watch?v=CHAyepp7ypY",
+    "https://www.youtube.com/shorts/CHAyepp7ypY",
+    "  https://www.youtube.com/live/CHAyepp7ypY  ",
+  ]) assert.equal(youtubeUrl(u), want, u);
+  for (const u of ["https://vimeo.com/123", "https://www.youtube.com/@channel", "not a link", "https://evil.com/youtube.com/watch?v=CHAyepp7ypY"]) assert.equal(youtubeUrl(u), null, u);
+});
