@@ -124,3 +124,40 @@ Suppose the men of Hartford had a grievance, and they laid that grievance before
 But let the men of Hartford imagine that they were not in the position of being voters at all, that they were governed without their consent being obtained, that the legislature turned an absolutely deaf ear to their demands, what would the men of Hartford do then? They couldn't vote the legislature out. They would have to choose; they would have to make a choice of two evils: they would either have to submit indefinitely to an unjust state of affairs, or they would have to rise up and adopt some of the antiquated means by which men in the past got their grievances remedied. We know what happened when your forefathers decided that they must have representation for taxation, many, many years ago. When they felt they couldn't wait any longer, when they laid all the arguments before an obstinate British government that they could think of, and when their arguments were absolutely disregarded, when every other means had failed, they began by the tea party at Boston, and they went on until they had won the independence of the United States of America. That is what happened in the old days.`,
   },
 ];
+
+// Pairs for Compare mode. Fictional parties and places, written to be equally reasonable,
+// so the comparison shows differences without pushing either side.
+export interface ComparePair {
+  label: string;
+  a: string;
+  b: string;
+}
+
+export const COMPARE_SAMPLES: ComparePair[] = [
+  {
+    label: "Two bus plans",
+    a: `Riverside Party (fictional): Our plan for buses in Northvale
+
+Bus routes in Northvale have been cut in half since 2019. We will bring back the number 12 and number 40 routes within two years. Fares for under-18s will be free, and adult fares will be capped at £2 per journey.
+
+To pay for it, the council will put a 5p charge on every parking ticket in the town centre and use £3 million from its reserves. Buses will be run by the council again, instead of a private company, so that profits go back into the service.`,
+    b: `Hilltop Alliance (fictional): Getting Northvale moving
+
+We want better buses without raising costs for drivers or using up the council's savings. We will offer a new ten-year contract to private bus companies, with fines if buses are late more than one time in ten.
+
+We will add on-demand minibuses that people can book with an app or by phone, for the villages where full bus routes do not pay for themselves. Adult fares stay at £2.50, and over-65s keep travelling free. The plan costs £1.5 million a year, paid from the existing transport budget.`,
+  },
+  {
+    label: "Two housing pledges",
+    a: `Green Valley First (fictional): Homes for local people
+
+We will build 800 new homes over four years on land the council already owns. Half will be for social rent. People who have lived in the valley for at least five years will get first choice of the new homes.
+
+We will also charge double council tax on homes left empty for more than a year, and use the money to repair old council houses.`,
+    b: `Valley Forward (fictional): More homes, faster
+
+We will change planning rules so private builders can put up 2,000 homes in eight years, including on the edge of the green belt. One in four homes will be "affordable", meaning sold or rented at 20% below market price.
+
+Builders will pay for a new primary school and a health centre as part of the deal. We will not raise council tax to pay for any of this.`,
+  },
+];

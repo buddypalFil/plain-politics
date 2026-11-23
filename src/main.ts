@@ -6,12 +6,12 @@ import "@fontsource-variable/literata/opsz.css";
 import "@fontsource-variable/literata/opsz-italic.css";
 import "@fontsource-variable/libre-franklin/wght.css";
 import "./style.css";
-import { buildPrompt, HEADINGS, LANGUAGE_NAMES, PERSUADES_HEADING, CONTEXT_HEADING, type Lang, type Level, type Mode } from "./prompt.ts";
+import { buildPrompt, buildComparePrompt, HEADINGS, COMPARE_HEADINGS, LANGUAGE_NAMES, PERSUADES_HEADING, CONTEXT_HEADING, type Lang, type Level, type Mode } from "./prompt.ts";
 import { chooseRoute, type DeviceStatus, type RunChoice } from "./route.ts";
 import { renderMarkdown, firstLine, escapeHtml } from "./markdown.ts";
 import { getDeviceStatus, hasPromptApi, warmUpDevice } from "./device.ts";
 import { readingAge } from "./readability.ts";
-import { SAMPLES } from "./samples.ts";
+import { SAMPLES, COMPARE_SAMPLES } from "./samples.ts";
 import { findPersonalData, describeFindings, redact, redactKnown, type Finding } from "./privacy.ts";
 import {
   isConfigured,
@@ -29,6 +29,7 @@ import {
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
 const input = $<HTMLTextAreaElement>("input");
+const input2 = $<HTMLTextAreaElement>("input2"); // Text B, only in Compare mode
 const charCount = $("char-count");
 const langSel = $<HTMLSelectElement>("lang");
 const runSel = $<HTMLSelectElement>("run");
@@ -63,7 +64,12 @@ const store = {
     try { localStorage.setItem(k, v); } catch { /* private window: fine */ }
   },
 };
-let mode: Mode = store.get("pp-mode") === "history" ? "history" : "today";
+// Compare needs two text boxes, so it isn't offered in the extension's side panel.
+const inPanel = new URLSearchParams(location.search).get("embed") === "1";
+let mode: Mode = (["history", ...(inPanel ? [] : ["compare"])] as Mode[]).find((m) => m === store.get("pp-mode")) ?? "today";
+const comparing = () => mode === "compare";
+// Everything the privacy guard and the router look at: both texts when comparing.
+const allText = () => (comparing() ? `${input.value}\n\n${input2.value}` : input.value);
 let level: Level = (["quick", "balanced", "detailed"] as const).find((l) => l === store.get("pp-level")) ?? "balanced";
 
 // Typical times on the device (MacBook, a page-long text). The cloud takes a few seconds either way.
@@ -76,6 +82,7 @@ const LEVEL_TEXT: Record<Level, string> = {
 
 function sectionNames(): string[] {
   const lang = langSel.value as Lang;
+  if (comparing()) return COMPARE_HEADINGS[lang];
   return [...HEADINGS[lang], ...(mode === "history" ? [PERSUADES_HEADING[lang], CONTEXT_HEADING[lang]] : [])];
 }
 // While the answer streams in, the sections still to come stay as faint outlines.
@@ -103,9 +110,26 @@ function setRoute(where: "device" | "cloud", running: boolean): void {
   lines[2].className = `l ${where === "cloud" ? "on" : "skip"}`;
 }
 
+// ---------- Compare: "Where they differ" as A and B lines ----------
+// The model writes "**Topic**: Text A: ... Text B: ...". Each side gets its own line with an A or B mark.
+// If a line doesn't follow that pattern (another language, a different wording), it is left as written.
+function shapeDiffer(lang: Lang): void {
+  const card = [...output.querySelectorAll(".card")].find((c) => c.querySelector("h3")?.textContent?.trim() === COMPARE_HEADINGS[lang][2]);
+  if (!card) return;
+  for (const li of card.querySelectorAll("li")) {
+    const topic = li.querySelector(":scope > strong:first-child");
+    const rest = li.innerHTML.slice(topic ? topic.outerHTML.length : 0).replace(/^\s*[:\-–—]\s*/, "");
+    const m = rest.match(/^(?:Text|Testo|Texte)\s*A\s*:\s*([\s\S]*?)\s*(?:Text|Testo|Texte)\s*B\s*:\s*([\s\S]*)$/i);
+    if (!m) continue;
+    li.innerHTML = `${topic ? topic.outerHTML : ""}<span class="ab"><b>A</b>${m[1].replace(/[.;,]\s*$/, ".")}</span><span class="ab"><b>B</b>${m[2]}</span>`;
+  }
+}
+
 // ---------- Check this claim ----------
 function addClaimButtons(lang: Lang): void {
-  const card = [...output.querySelectorAll(".card")].find((c) => c.querySelector("h3")?.textContent?.trim() === HEADINGS[lang][2]);
+  // "Claims worth checking" is the third section of an explainer and the fifth of a comparison.
+  const names = [HEADINGS[lang][2], COMPARE_HEADINGS[lang][4]];
+  const card = [...output.querySelectorAll(".card")].find((c) => names.includes(c.querySelector("h3")?.textContent?.trim() ?? ""));
   if (!card) return;
   for (const li of card.querySelectorAll("li")) {
     const b = document.createElement("button");
@@ -212,8 +236,24 @@ function renderChoices(): void {
   $("mode-hint").textContent =
     mode === "history"
       ? "A speech, declaration or letter from the past. History mode adds how it tries to persuade and its historical context. Try a real speech:"
-      : "A news article, a speech, a bill or a manifesto. Or try a made-up sample:";
-  $("ghost").innerHTML = sectionNames().map((h) => `<li>${escapeHtml(h)}</li>`).join("");
+      : comparing()
+        ? "Two texts on the same topic, for example two parties' plans. See where they agree and differ, without being told which is better. Or try a made-up pair:"
+        : "A news article, a speech, a bill or a manifesto. Or try a made-up sample:";
+  input2.hidden = $("label-a").hidden = $("label-b").hidden = !comparing();
+  const lede = output.querySelector(".empty-lede");
+  if (lede) {
+    lede.innerHTML = comparing()
+      ? "Paste two texts and press <b>Compare them</b>. Your comparison appears here, in plain words:"
+      : "Paste a text and press <b>Explain it</b>. Your explainer appears here, in plain words:";
+  }
+  document.body.classList.toggle("compare-on", comparing());
+  input.placeholder = comparing() ? "Paste the first text here…" : "Paste the text here…";
+  if (!explainBtn.disabled) explainBtn.textContent = explainLabel();
+  updateCount();
+  updatePrivacy();
+  // The outline only exists before the first result (a result replaces it), so it may be gone.
+  const ghost = document.getElementById("ghost");
+  if (ghost) ghost.innerHTML = sectionNames().map((h) => `<li>${escapeHtml(h)}</li>`).join("");
   renderSamples();
 }
 $("mode-seg").addEventListener("click", (e) => {
@@ -233,6 +273,25 @@ $("level-seg").addEventListener("click", (e) => {
 
 // ---------- Samples and character count ----------
 function renderSamples(): void {
+  if (comparing()) {
+    const box = $("samples");
+    box.innerHTML = "";
+    for (const p of COMPARE_SAMPLES) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip";
+      b.textContent = p.label;
+      b.addEventListener("click", () => {
+        input.value = p.a;
+        input2.value = p.b;
+        sourceNote.hidden = true;
+        updateCount();
+        updatePrivacy();
+      });
+      box.appendChild(b);
+    }
+    return;
+  }
   const year = (label: string) => Number(label.match(/\d{4}/)?.[0] ?? 0);
   const list = SAMPLES.filter((x) => !!x.history === (mode === "history")).sort((a, b) => year(a.label) - year(b.label));
   const box = $("samples");
@@ -251,15 +310,18 @@ function renderSamples(): void {
     box.appendChild(b);
   }
 }
-const updateCount = () => (charCount.textContent = input.value.length.toLocaleString("en-GB"));
-input.addEventListener("input", () => {
-  updateCount();
-  updatePrivacy();
-});
+const updateCount = () => (charCount.textContent = allText().length.toLocaleString("en-GB"));
+for (const box of [input, input2]) {
+  box.addEventListener("input", () => {
+    updateCount();
+    updatePrivacy();
+  });
+}
+const explainLabel = () => (comparing() ? "Compare them" : "Explain it");
 
 // ---------- Privacy guard ----------
 function updatePrivacy(): void {
-  const found = findPersonalData(input.value);
+  const found = findPersonalData(allText());
   privacyBox.classList.toggle("found", found.length > 0);
   redactBtn.hidden = found.length === 0;
   privacyText.textContent =
@@ -269,11 +331,13 @@ function updatePrivacy(): void {
 }
 redactBtn.addEventListener("click", () => {
   input.value = redact(input.value);
+  input2.value = redact(input2.value);
   updateCount();
   updatePrivacy();
 });
 redactSendBtn.addEventListener("click", () => {
   input.value = redact(input.value);
+  input2.value = redact(input2.value);
   updateCount();
   updatePrivacy();
   explain();
@@ -343,9 +407,17 @@ setupBtn.addEventListener("click", async () => {
 explainBtn.addEventListener("click", () => void booted.then(() => explain()));
 
 async function explain(): Promise<void> {
-  const text = input.value.trim();
+  const a = input.value.trim();
+  const b = input2.value.trim();
+  const compare = comparing();
+  // What gets checked for personal details and length, and what is kept (shortened) in the library.
+  const text = compare ? `Text A:\n${a}\n\nText B:\n${b}` : a;
   hideError();
-  if (text.length < 40) {
+  if (compare && (a.length < 40 || b.length < 40)) {
+    showError("Paste both texts first (a paragraph or more each), or pick a pair.");
+    return;
+  }
+  if (!compare && a.length < 40) {
     showError("Paste a longer text first (a paragraph or more), or pick a sample.");
     return;
   }
@@ -371,7 +443,7 @@ async function explain(): Promise<void> {
   }
 
   explainBtn.disabled = true;
-  explainBtn.textContent = "Explaining…";
+  explainBtn.textContent = compare ? "Comparing…" : "Explaining…";
   actions.hidden = true;
   $("gauge").hidden = true;
   stopSpeaking();
@@ -395,7 +467,7 @@ async function explain(): Promise<void> {
   let markdown = "";
   try {
     const model = makeModel(route.mode, lang, settings.cloudModel);
-    const prompt = buildPrompt(text, lang, level, mode);
+    const prompt = compare ? buildComparePrompt(a, b, lang, level) : buildPrompt(text, lang, level, mode);
     // When Google's cloud model is overloaded it can stop mid-answer. Try again
     // a couple of times, after a short pause, before giving up.
     let final;
@@ -422,7 +494,9 @@ async function explain(): Promise<void> {
     const secs = ((performance.now() - started) / 1000).toFixed(1);
     showBadge(source, secs);
     setRoute(source === "on_device" ? "device" : "cloud", false);
-    showGauge(text, output.innerText, lang);
+    // Reading age compares one original with its explainer, so it is left out of comparisons.
+    if (!compare) showGauge(text, output.innerText, lang);
+    else shapeDiffer(lang);
     addClaimButtons(lang);
     lastResult = { markdown, source, lang, text, findings };
     actions.hidden = false;
@@ -437,7 +511,7 @@ async function explain(): Promise<void> {
     clearInterval(timer);
     output.classList.remove("streaming");
     explainBtn.disabled = false;
-    explainBtn.textContent = "Explain it";
+    explainBtn.textContent = explainLabel();
   }
 }
 

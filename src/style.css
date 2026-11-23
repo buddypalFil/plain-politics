@@ -108,6 +108,11 @@ h2 { font: 700 22px/1.15 var(--serif); margin: 0 0 6px; }
 
 textarea { display: block; width: 100%; min-height: 230px; resize: vertical; border: 1px solid var(--line); border-radius: 0; padding: 12px 14px; background: var(--panel); color: var(--ink); font: 400 15px/1.55 var(--serif); }
 textarea:focus { border-color: var(--ink); outline: none; }
+/* Compare: Text A and Text B, each with a small label; the boxes get shorter so both fit */
+.tlabel { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font: 800 11px/1 var(--sans); letter-spacing: .16em; text-transform: uppercase; color: var(--ink); }
+.tlabel::before { content: ""; width: 18px; height: 3px; background: var(--ink); }
+#label-b { margin-top: 14px; }
+.compare-on textarea { min-height: 150px; height: 170px; }
 .under-input { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-top: 8px; font: 500 12.5px/1.4 var(--sans); }
 .count { color: var(--muted); white-space: nowrap; }
 .privacy { flex: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; color: var(--ink-2); }
@@ -200,15 +205,19 @@ button.secondary:hover { background: var(--accent-soft); }
 @keyframes blink { 50% { opacity: 0; } }
 
 /* Claims worth checking: columns, each with a box to mark */
-.output .card:nth-child(3) ul { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
-.output .card:nth-child(3) li { padding: 4px 18px 10px 0; }
-.output .card:nth-child(3) li + li { border-left: 1px solid var(--line); padding-left: 18px; }
+/* Every column has a divider on its left; the list is pulled 18px left and clipped, so the divider of
+   whichever item starts a row is hidden, however many items there are. */
+.output .card:nth-child(3) ul { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); margin-left: -18px; overflow: hidden; }
+.output .card:nth-child(3) li { padding: 4px 18px 10px; border-left: 1px solid var(--line); }
 .output .card:nth-child(3) li::before { display: none; }
 .output .card:nth-child(3) li > strong:first-child { display: block; font-style: italic; font-size: 17.5px; line-height: 1.3; margin-bottom: 4px; }
-.output .card:nth-child(3) li:not(:has(.claim-drawer)) { padding-bottom: 40px; }
+.output .card:nth-child(3) li:has(> .check-claim):not(:has(.claim-drawer)) { padding-bottom: 40px; }
 .output .card:nth-child(3) li:not(:has(.claim-drawer)) > .check-claim { position: absolute; bottom: 10px; }
-.output .card:nth-child(3) li:has(.claim-drawer) { grid-column: 1 / -1; border-left: 0; padding-left: 0; }
-.output .card:nth-child(3) li:has(.claim-drawer) + li { border-left: 0; padding-left: 0; }
+.output .card:nth-child(3) li:has(.claim-drawer) { grid-column: 1 / -1; }
+/* Compare: each difference shows Text A and Text B on their own lines */
+.output .ab { display: flex; gap: 8px; margin-top: 5px; }
+.output .ab b { flex: none; display: grid; place-items: center; width: 18px; height: 18px; margin-top: .2em; background: var(--ink); color: var(--bg); font: 800 10px/1 var(--sans); }
+.compare-on .output .card:nth-child(1) p { font-size: 34px; line-height: 1.14; }
 .check-claim { display: flex; width: fit-content; align-items: center; gap: 10px; margin-top: 8px; padding: 0; border: 0; background: none; cursor: pointer; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--warn); text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 4px; }
 .check-claim::after { content: ""; flex: none; width: 20px; height: 20px; border: 2px solid currentColor; }
 .check-claim:hover::after { background-color: var(--warn-soft); }
@@ -325,8 +334,9 @@ button.secondary:hover { background: var(--accent-soft); }
   .output .card:nth-child(n) { grid-column: 1; grid-row: auto; }
   .output .ghost.pending, .output > p, .output.streaming::after { grid-row: auto; }
   .output .card:nth-child(1) p { font-size: 30px; }
-  .output .card:nth-child(3) ul { grid-template-columns: 1fr; }
-  .output .card:nth-child(3) li + li { border-left: 0; padding-left: 0; border-top: 1px solid var(--line); padding-top: 10px; }
+  .output .card:nth-child(3) ul { grid-template-columns: 1fr; margin-left: 0; }
+  .output .card:nth-child(3) li { border-left: 0; padding-left: 0; }
+  .output .card:nth-child(3) li + li { border-top: 1px solid var(--line); padding-top: 10px; }
   .ghost li:first-child { font-size: 22px; }
   .g-cap { font-size: 36px; }
 }
@@ -339,7 +349,7 @@ button.secondary:hover { background: var(--accent-soft); }
 .embed .mast h1 { font-size: 30px; display: flex; align-items: center; gap: 10px; }
 .embed .logo { display: block; width: 30px; height: 30px; flex: none; }
 .embed .tagline, .embed .navlink, .embed .sections .sep { display: none; }
-.embed .ear { display: none; }
+.embed .ear, .embed [data-mode="compare"] { display: none; }
 .embed .mast { display: block; }
 .embed .edition { font-size: 0; padding: 2px 0; border-top-width: 2px; }
 .embed .sections { padding: 8px 0; }

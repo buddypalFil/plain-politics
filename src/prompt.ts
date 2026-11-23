@@ -6,7 +6,8 @@ export type Lang = "en" | "it" | "fr";
 // answers arrive sooner on the device (measured on a MacBook: Balanced 15 s, Detailed 25 s).
 export type Level = "quick" | "balanced" | "detailed";
 // "today": news, bills, manifestos. "history": speeches and documents from the past.
-export type Mode = "today" | "history";
+// "compare": two texts on the same topic, side by side.
+export type Mode = "today" | "history" | "compare";
 
 export const LANGUAGE_NAMES: Record<Lang, string> = {
   en: "English",
@@ -19,6 +20,13 @@ export const HEADINGS: Record<Lang, string[]> = {
   en: ["In one sentence", "What it says", "Claims worth checking", "Who it affects", "Words explained", "Questions to ask"],
   it: ["In una frase", "Cosa dice", "Affermazioni da verificare", "Chi riguarda", "Parole spiegate", "Domande da porsi"],
   fr: ["En une phrase", "Ce que dit le texte", "Affirmations à vérifier", "Qui est concerné", "Mots expliqués", "Questions à se poser"],
+};
+
+// The six sections of a comparison. The claims section is fifth here (index 4).
+export const COMPARE_HEADINGS: Record<Lang, string[]> = {
+  en: ["In one sentence", "Where they agree", "Where they differ", "Who each would affect", "Claims worth checking", "Questions to ask"],
+  it: ["In una frase", "Dove sono d'accordo", "Dove sono diversi", "Chi riguarda ciascuno", "Affermazioni da verificare", "Domande da porsi"],
+  fr: ["En une phrase", "Où ils sont d'accord", "Où ils diffèrent", "Qui chacun concerne", "Affirmations à vérifier", "Questions à se poser"],
 };
 
 // Two more sections in History mode.
@@ -89,6 +97,50 @@ export function buildPrompt(text: string, lang: Lang, level: Level = "balanced",
     "TEXT:",
     '"""',
     text.trim(),
+    '"""',
+  ].join("\n");
+}
+
+// Compare two texts on the same topic. Both are treated exactly the same way, and the answer never says
+// which one is better: the reader decides.
+export function buildComparePrompt(a: string, b: string, lang: Lang, level: Level = "balanced"): string {
+  const h = COMPARE_HEADINGS[lang];
+  const { bullets } = LEVELS[level];
+  return [
+    "You compare two political texts on the same topic (for example two parties' plans, or two speeches) for ordinary readers, in plain words. Call them Text A and Text B.",
+    "Rules:",
+    "- Be neutral. Treat both texts the same way, with the same depth and the same tone.",
+    "- Never say which text is better, fairer, more convincing or more honest, and never say how to vote.",
+    "- Use only what is in the two texts. Never add facts, numbers or names that are not in them.",
+    "- Copy every number, percentage and amount exactly as the texts write it. Never work out new numbers.",
+    "- If one text does not cover a point, write that it does not say.",
+    "- Use short sentences and everyday words.",
+    // Comparing needs a little more room per bullet than explaining one text.
+    ...(level === "quick" ? ["- Keep every bullet point under 20 words."] : level === "balanced" ? ["- Keep every bullet point under 30 words."] : []),
+    `- Write the whole answer in ${LANGUAGE_NAMES[lang]}.`,
+    "",
+    "Answer in Markdown with exactly these six sections, in this order:",
+    `## ${h[0]}`,
+    "One sentence a 12-year-old would understand: what both texts are about and their biggest difference.",
+    `## ${h[1]}`,
+    `${bullets}: points that both texts share. If they agree on nothing, say so.`,
+    `## ${h[2]}`,
+    `${bullets}. Each one starts with the topic in bold, then what Text A says and what Text B says, like this: **Cost**: Text A: ... Text B: ...`,
+    `## ${h[3]}`,
+    `${bullets}: which groups of people each text would affect and how. Say Text A or Text B each time.`,
+    `## ${h[4]}`,
+    `${bullets}, taken from both texts as evenly as possible. Each one: the claim itself (do not start with the word "Claim"), then (Text A) or (Text B), then why a reader should check it.`,
+    `## ${h[5]}`,
+    `${bullets}: fair questions a reader could ask the authors of both texts.`,
+    "",
+    "TEXT A:",
+    '"""',
+    a.trim(),
+    '"""',
+    "",
+    "TEXT B:",
+    '"""',
+    b.trim(),
     '"""',
   ].join("\n");
 }

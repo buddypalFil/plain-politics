@@ -40,6 +40,7 @@
       <div class="tabs" role="group" aria-label="Kind of text" id="mode-seg">
         <button type="button" data-mode="today" aria-pressed="true">Today</button>
         <button type="button" data-mode="history" aria-pressed="false">History</button>
+        <button type="button" data-mode="compare" aria-pressed="false">Compare</button>
       </div>
       <span class="sep" aria-hidden="true"></span>
       <a href="#lib-title" class="navlink">My library</a>
@@ -78,8 +79,11 @@
       <p id="mode-hint" class="hint">A news article, a speech, a bill or a manifesto. Or try a made-up sample:</p>
       <p id="source-note" class="hint small source-note" hidden></p>
       <div id="samples" class="samples"></div>
+      <label id="label-a" class="tlabel" for="input" hidden>Text A</label>
       <label class="sr-only" for="input">Text to explain</label>
       <textarea id="input" rows="11" placeholder="Paste the text here…"></textarea>
+      <label id="label-b" class="tlabel" for="input2" hidden>Text B</label>
+      <textarea id="input2" rows="8" placeholder="Paste the second text here…" hidden></textarea>
       <div class="under-input">
         <div id="privacy" class="privacy" role="status">
           <span id="privacy-text">Privacy guard is on: personal details never go to the cloud.</span>

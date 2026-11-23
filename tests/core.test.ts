@@ -117,3 +117,26 @@ test("reading age: plain text scores lower than dense official text", async () =
   assert.ok(a.age >= 5 && b.age <= 20);
   assert.equal(readingAge("Too short."), null);
 });
+
+test("compare prompt: both texts, six compare sections, neutral rules", async () => {
+  const { buildComparePrompt, COMPARE_HEADINGS } = await import("../src/prompt.ts");
+  const p = buildComparePrompt("First text about buses.", "Second text about buses.", "en", "balanced");
+  assert.ok(p.includes("TEXT A:") && p.includes("First text about buses."));
+  assert.ok(p.includes("TEXT B:") && p.includes("Second text about buses."));
+  for (const h of COMPARE_HEADINGS.en) assert.ok(p.includes(`## ${h}`), h);
+  assert.match(p, /Never say which text is better/);
+  assert.match(p, /under 30 words/);
+  assert.match(buildComparePrompt("a", "b", "en", "quick"), /under 20 words/);
+  assert.doesNotMatch(buildComparePrompt("a", "b", "en", "detailed"), /under \d+ words/);
+  assert.match(buildComparePrompt("a", "b", "it"), /## Dove sono diversi/);
+});
+
+test("compare samples: fictional pairs with two real texts each", async () => {
+  const { COMPARE_SAMPLES } = await import("../src/samples.ts");
+  assert.ok(COMPARE_SAMPLES.length >= 2);
+  for (const s of COMPARE_SAMPLES) {
+    assert.ok(s.a.length > 200 && s.b.length > 200, s.label);
+    assert.match(s.a, /fictional/);
+    assert.match(s.b, /fictional/);
+  }
+});
