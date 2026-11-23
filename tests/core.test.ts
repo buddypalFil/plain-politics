@@ -210,3 +210,33 @@ test("every language has every heading, and prompts use them", async () => {
   }
   assert.ok(p.buildComparePrompt("a", "b", "de").includes("## Worin sie sich unterscheiden"));
 });
+
+test("stall limit: passes a healthy stream through, gives up on a silent one and cancels it", async () => {
+  const { withStallLimit, StalledError } = await import("../src/stream.ts");
+  const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  async function* steady() { yield "a"; await wait(10); yield "b"; await wait(10); yield "c"; }
+  const got: string[] = [];
+  for await (const x of withStallLimit(steady(), 200, 100)) got.push(x);
+  assert.deepEqual(got, ["a", "b", "c"]);
+
+  // Sends one piece, then goes silent (like a stalled connection).
+  async function* silent() { yield "a"; await new Promise(() => {}); }
+  let cancelled = false;
+  const partial: string[] = [];
+  await assert.rejects(async () => {
+    for await (const x of withStallLimit(silent(), 200, 40, () => { cancelled = true; })) partial.push(x);
+  }, (e: unknown) => e instanceof StalledError && /stream stalled/.test((e as Error).message));
+  assert.deepEqual(partial, ["a"]);
+  assert.equal(cancelled, true);
+
+  // Nothing at all before the first-piece limit.
+  await assert.rejects(async () => { for await (const _ of withStallLimit(silent2(), 30, 1000)) { /* never */ } }, StalledError);
+  async function* silent2() { await new Promise(() => {}); yield "never"; }
+});
+
+test("stall error gets a plain message", async () => {
+  const { friendlyMessage } = await import("../src/errors.ts");
+  const m = friendlyMessage("stream stalled: no new text for 25 s", { deviceReady: false, online: true, dev: false });
+  assert.match(m, /stopped answering partway through/);
+  assert.match(friendlyMessage("Timeout has expired.", { deviceReady: false, online: true, dev: false }), /stopped answering/);
+});

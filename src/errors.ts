@@ -23,6 +23,9 @@ export function friendlyMessage(m: string, ctx: { deviceReady: boolean; online: 
   if (/mime|unsupported|invalid.*(file|format)|Unable to process/i.test(m)) {
     return "Google's AI couldn't read this file. Try an MP4 video or an MP3 or M4A recording.";
   }
+  if (/stream stalled|Timeout has expired/i.test(m)) {
+    return `The AI stopped answering partway through, even after trying again. Wait a minute and try again${orDevice}.`;
+  }
   if (/parse-failed|Failed to parse stream/i.test(m)) {
     return `Google's cloud AI is very busy right now and stopped before the answer finished. Wait a minute and try again${orDevice}.`;
   }

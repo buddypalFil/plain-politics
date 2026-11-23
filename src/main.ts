@@ -15,6 +15,7 @@ import { SAMPLES, COMPARE_SAMPLES } from "./samples.ts";
 import { drawFrontPage } from "./share.ts";
 import { youtubeUrl } from "./youtube.ts";
 import { friendlyMessage } from "./errors.ts";
+import { withStallLimit } from "./stream.ts";
 import { findSpin, countByKind, highlightHtml, SPIN_KINDS, type SpinKind } from "./spin.ts";
 import { findPersonalData, describeFindings, redact, redactKnown, type Finding } from "./privacy.ts";
 import {
@@ -387,7 +388,9 @@ function updatePrivacy(): void {
   privacyText.textContent =
     found.length === 0
       ? "Privacy guard is on: personal details never go to the cloud."
-      : `Found ${describeFindings(found)}. This text will only run on your device.`;
+      : deviceStatus === "available"
+        ? `Found ${describeFindings(found)}. This text will only run on your device.`
+        : `Found ${describeFindings(found)}. These never go to the cloud, and on-device AI isn't ready in this browser, so remove them to explain this text.`;
 }
 // Both boxes are checked together, so a name given in Text A is also removed from Text B.
 function redactBoxes(): void {
@@ -407,6 +410,7 @@ redactSendBtn.addEventListener("click", () => {
 async function refreshDevice(): Promise<void> {
   const lang = langSel.value as Lang;
   deviceStatus = await getDeviceStatus(lang);
+  updatePrivacy(); // its wording depends on whether the device can run the text
   pill.className = "pill";
   setupBtn.hidden = true;
   deviceHelp.hidden = true;
@@ -740,8 +744,14 @@ async function explainOnce(): Promise<void> {
     for (let attempt = 1; ; attempt++) {
       try {
         markdown = "";
-        const result = await model.generateContentStream(prompt);
-        for await (const chunk of result.stream) {
+        const cancel = new AbortController();
+        // timeout: how long to wait for the cloud to start answering at all (the library's default is 3 minutes).
+        const result = await model.generateContentStream(prompt, { signal: cancel.signal, timeout: FIRST_WORDS_MS });
+        // If the stream breaks, result.response fails too; the loop's error is the one handled (and retried),
+        // so mark this one as seen rather than leave an "uncaught" error in the console.
+        result.response.catch(() => {});
+        // Give up on an answer that goes quiet (the first words can take a while on the device), then retry.
+        for await (const chunk of withStallLimit(result.stream, FIRST_WORDS_MS, NEXT_WORDS_MS, () => cancel.abort())) {
           markdown += chunk.text();
           output.innerHTML = renderMarkdown(markdown) + pendingSections(markdown, runSections);
         }
@@ -784,11 +794,14 @@ async function explainOnce(): Promise<void> {
 }
 
 const MAX_ATTEMPTS = 3;
+// How long an answer may stay silent: before its first words, then between words.
+const FIRST_WORDS_MS = 45_000;
+const NEXT_WORDS_MS = 25_000;
 
-// Overload errors arrive as a cut-off stream ("Failed to parse stream") or as
-// 500/503 "high demand" / UNAVAILABLE responses.
+// Overload errors arrive as a cut-off stream ("Failed to parse stream"), a stream that goes silent ("stalled"),
+// or as 500/503 "high demand" / UNAVAILABLE responses.
 function isBusyError(e: unknown): boolean {
-  return /parse-failed|Failed to parse stream|high demand|overloaded|UNAVAILABLE|INTERNAL|\b50[03]\b/i.test(messageOf(e));
+  return /parse-failed|Failed to parse stream|stalled|Timeout has expired|high demand|overloaded|UNAVAILABLE|INTERNAL|\b50[03]\b/i.test(messageOf(e));
 }
 
 function showBadge(source: "on_device" | "in_cloud", secs: string): void {
