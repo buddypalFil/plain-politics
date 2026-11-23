@@ -1,0 +1,7 @@
+.build/
+*.xcodeproj/xcuserdata/
+.swiftpm/xcode/xcuserdata/
+PlainPolitics.swiftpm/.swiftpm/
+PlainPolitics.swiftpm/.build/
+DerivedData/
+*.log
