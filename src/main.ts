@@ -9,7 +9,7 @@ import "./style.css";
 import { buildPrompt, buildComparePrompt, HEADINGS, COMPARE_HEADINGS, LANGUAGE_NAMES, PERSUADES_HEADING, CONTEXT_HEADING, type Lang, type Level, type Mode } from "./prompt.ts";
 import { chooseRoute, type DeviceStatus, type RunChoice } from "./route.ts";
 import { renderMarkdown, firstLine, escapeHtml } from "./markdown.ts";
-import { getDeviceStatus, hasPromptApi, warmUpDevice } from "./device.ts";
+import { getDeviceStatus, getImageDeviceStatus, hasPromptApi, warmUpDevice } from "./device.ts";
 import { readingAge } from "./readability.ts";
 import { SAMPLES, COMPARE_SAMPLES } from "./samples.ts";
 import { drawFrontPage } from "./share.ts";
@@ -24,6 +24,7 @@ import {
   deleteExplainer,
   hasLibraryUser,
   checkClaim,
+  readPhoto,
   type Settings,
   type SavedExplainer,
 } from "./firebase.ts";
@@ -444,8 +445,97 @@ setupBtn.addEventListener("click", async () => {
   }
 });
 
+// ---------- Read a photo (a leaflet, a poster, a newspaper cutting) ----------
+// The photo is read on this device when Chrome's model can take pictures. Otherwise it would go to the cloud
+// as it is, which the privacy guard can't check, so the reader is asked first. The text read from the photo
+// goes into the text box, where the reader checks it and the privacy guard scans it as usual.
+const photoBtn = $<HTMLButtonElement>("photo");
+const photoFile = $<HTMLInputElement>("photo-file");
+const photoStatus = $("photo-status");
+const photoConfirm = $("photo-confirm");
+let pendingPhoto: string | null = null;
+function setPhotoStatus(text: string): void {
+  photoStatus.textContent = text;
+  photoStatus.hidden = !text;
+}
+// Shrinks the photo (long side 1600 px) and returns it as JPEG in base64: smaller and faster to read.
+async function photoToJpeg(file: File): Promise<string> {
+  const bmp = await createImageBitmap(file);
+  const scale = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bmp.width * scale);
+  canvas.height = Math.round(bmp.height * scale);
+  canvas.getContext("2d")!.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+  bmp.close();
+  return canvas.toDataURL("image/jpeg", 0.85).split(",")[1];
+}
+async function runPhoto(jpeg: string, mode: "only_on_device" | "only_in_cloud"): Promise<void> {
+  photoConfirm.hidden = true;
+  photoBtn.disabled = true;
+  setPhotoStatus(mode === "only_on_device" ? "Reading the photo on your device…" : "Reading the photo in the cloud…");
+  try {
+    const r = await readPhoto(jpeg, mode, settings.cloudModel);
+    if (!r.text || /^NO TEXT\.?$/i.test(r.text)) {
+      setPhotoStatus("No readable text found. Try a sharper photo, taken straight on, in good light.");
+      return;
+    }
+    // When comparing, a second photo fills Text B.
+    const target = comparing() && input.value.trim() && !input2.value.trim() ? input2 : input;
+    target.value = r.text;
+    sourceNote.hidden = true;
+    updateCount();
+    updatePrivacy();
+    setPhotoStatus(`Read ${r.ranOn === "on_device" ? "on your device" : "in the cloud"}. Check the text against the photo, then press ${explainLabel()}.`);
+    target.focus();
+  } catch (e) {
+    setPhotoStatus(`Couldn't read the photo: ${friendlyError(e)}`);
+  } finally {
+    photoBtn.disabled = false;
+  }
+}
+photoBtn.addEventListener("click", () => photoFile.click());
+photoFile.addEventListener("change", async () => {
+  const file = photoFile.files?.[0];
+  photoFile.value = "";
+  if (!file) return;
+  await booted;
+  hideError();
+  photoConfirm.hidden = true;
+  let jpeg: string;
+  try {
+    jpeg = await photoToJpeg(file);
+  } catch {
+    setPhotoStatus("That file couldn't be opened as a picture. Try a JPEG or PNG photo.");
+    return;
+  }
+  const canRead = (await getImageDeviceStatus()) === "available";
+  if (canRead && runSel.value !== "cloud") return runPhoto(jpeg, "only_on_device");
+  if (!navigator.onLine) return setPhotoStatus("You're offline, and this browser can't read photos on your device.");
+  if (runSel.value === "device") return setPhotoStatus("You chose This device only, but this browser can't read photos on your device.");
+  pendingPhoto = jpeg;
+  setPhotoStatus("");
+  photoConfirm.hidden = false;
+});
+$("photo-send").addEventListener("click", () => {
+  if (pendingPhoto) void runPhoto(pendingPhoto, "only_in_cloud");
+  pendingPhoto = null;
+});
+$("photo-cancel").addEventListener("click", () => {
+  pendingPhoto = null;
+  photoConfirm.hidden = true;
+});
+
 // ---------- Explain ----------
 explainBtn.addEventListener("click", () => void booted.then(() => explain()));
+// Ctrl+Enter (Cmd+Enter on a Mac) in a text box explains it.
+for (const box of [input, input2]) {
+  box.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !explainBtn.disabled) {
+      e.preventDefault();
+      explainBtn.click();
+    }
+  });
+}
 
 async function explain(): Promise<void> {
   const a = input.value.trim();

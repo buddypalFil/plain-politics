@@ -30,6 +30,25 @@ export async function getDeviceStatus(lang: Lang): Promise<DeviceStatus> {
   }
 }
 
+// Can the on-device model read pictures (for "Read a photo")? Asked separately, because image input
+// can be missing even where text works.
+export async function getImageDeviceStatus(): Promise<DeviceStatus> {
+  const LM = (globalThis as { LanguageModel?: LanguageModelLike }).LanguageModel;
+  if (!LM?.availability) return "unavailable";
+  try {
+    const s = await LM.availability({
+      expectedInputs: [{ type: "image" }, { type: "text", languages: ["en"] }],
+      expectedOutputs: [{ type: "text", languages: ["en"] }],
+    });
+    if (s === "available" || s === "readily") return "available";
+    if (s === "downloadable" || s === "after-download") return "downloadable";
+    if (s === "downloading") return "downloading";
+    return "unavailable";
+  } catch {
+    return "unavailable";
+  }
+}
+
 // Loads the on-device model into memory in the background, so the first explainer
 // starts as fast as later ones. Only when the model is already downloaded.
 export async function warmUpDevice(lang: Lang): Promise<void> {

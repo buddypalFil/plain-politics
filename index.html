@@ -79,6 +79,16 @@
       <p id="mode-hint" class="hint">A news article, a speech, a bill or a manifesto. Or try a made-up sample:</p>
       <p id="source-note" class="hint small source-note" hidden></p>
       <div id="samples" class="samples"></div>
+      <div id="photo-row" class="photo-row">
+        <button id="photo" class="link-btn" type="button">Read a photo of a leaflet or poster</button>
+        <input id="photo-file" type="file" accept="image/*" hidden />
+      </div>
+      <p id="photo-status" class="photo-status" role="status" hidden></p>
+      <div id="photo-confirm" class="photo-confirm" hidden>
+        <p>This browser can't read photos on your device, so the photo would go to Google's cloud as it is. The privacy guard can't check photos for names or addresses.</p>
+        <button id="photo-send" class="secondary" type="button">Send the photo to the cloud</button>
+        <button id="photo-cancel" class="link-btn" type="button">Cancel</button>
+      </div>
       <label id="label-a" class="tlabel" for="input" hidden>Text A</label>
       <label class="sr-only" for="input">Text to explain</label>
       <textarea id="input" rows="11" placeholder="Paste the text here…"></textarea>

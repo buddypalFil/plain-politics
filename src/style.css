@@ -133,6 +133,18 @@ textarea:focus { border-color: var(--ink); outline: none; }
 .choice-hint { margin: 4px 0 6px; font: 500 12px/1.4 var(--sans); color: var(--muted); }
 .choice-hint:empty { display: none; }
 
+/* Read a photo */
+.photo-row { margin: -4px 0 12px; }
+.photo-row .link-btn { font: 600 13px/1.3 var(--sans); color: var(--ink); text-decoration-color: var(--line); text-underline-offset: 4px; }
+.photo-row .link-btn::before { content: ""; display: inline-block; width: 12px; height: 9px; margin-right: 7px; border: 1.5px solid currentColor; border-radius: 2px; vertical-align: -1px; box-shadow: inset 0 0 0 2.5px var(--bg), inset 0 0 0 4px currentColor; }
+.photo-row .link-btn:hover { text-decoration-color: var(--ink); }
+.photo-row .link-btn:disabled { color: var(--muted); cursor: progress; }
+.photo-status { margin: -4px 0 12px; font: 500 12.5px/1.45 var(--sans); color: var(--ink-2); }
+.photo-confirm { margin: 0 0 12px; padding: 10px 12px; background: var(--warn-soft); border-left: 3px solid var(--warn); font: 500 13px/1.45 var(--sans); color: var(--ink); }
+.photo-confirm p { margin: 0 0 8px; }
+.photo-confirm .secondary { margin: 0 12px 0 0; }
+.embed #photo-row { display: none; }
+
 /* Language and Run on, as ruled rows */
 .options { display: grid; margin: 14px 0 16px; }
 .options label { display: flex; justify-content: space-between; align-items: center; gap: 10px; border-bottom: 1px solid var(--line); padding: 6px 0; }
@@ -340,8 +352,9 @@ button.secondary:hover { background: var(--accent-soft); }
   .ear, .edition .ed-mid { display: none; }
   .mast h1 { font-size: 50px; }
   .tagline { font-size: 16px; margin-top: 6px; }
-  .sections { gap: 18px; justify-content: flex-start; }
-  .tabs { gap: 18px; }
+  .sections { gap: 6px 14px; justify-content: flex-start; flex-wrap: wrap; }
+  .tabs { gap: 14px; }
+  .sections button, .navlink { font-size: 11.5px; letter-spacing: .09em; white-space: nowrap; }
   .grid { grid-template-columns: 1fr; margin-top: 18px; }
   .orig { padding: 0 0 22px; border-right: 0; border-bottom: 3px solid var(--ink); }
   .story { padding: 18px 0 0; }

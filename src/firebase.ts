@@ -96,6 +96,29 @@ export function makeModel(mode: Mode, lang: Lang, cloudModel: string): Generativ
   });
 }
 
+// ---------- Read a photo ----------
+// Copies the text out of a photo (a leaflet, a poster, a newspaper cutting). The text then goes into the
+// text box, where the reader checks it and the privacy guard scans it before anything is explained.
+export async function readPhoto(jpegBase64: string, mode: Mode, cloudModel: string): Promise<{ text: string; ranOn: "on_device" | "in_cloud" }> {
+  const model = getGenerativeModel(ai, {
+    mode,
+    inCloudParams: { model: cloudModel, generationConfig: { temperature: 0, maxOutputTokens: 2000 } },
+    onDeviceParams: {
+      createOptions: {
+        expectedInputs: [{ type: "image" }, { type: "text", languages: ["en"] }],
+        expectedOutputs: [{ type: "text", languages: ["en"] }],
+      },
+    },
+  });
+  const prompt = [
+    "Copy out all the text you can read in this picture, exactly as written, in reading order.",
+    "Keep headings and paragraphs on separate lines. Do not add, explain, translate or summarise anything.",
+    "If there is no readable text, reply with exactly: NO TEXT",
+  ].join("\n");
+  const result = await model.generateContent([{ type: "text", text: prompt }, { type: "inlineData", inlineData: { mimeType: "image/jpeg", data: jpegBase64 } }]);
+  return { text: result.response.text().trim(), ranOn: result.response.inferenceSource === "on_device" ? "on_device" : "in_cloud" };
+}
+
 // ---------- Check one claim ----------
 // Two ways, switched by Remote Config ("claim_grounding"):
 //  - grounded: only the chosen sentence goes to Gemini in the cloud with Google Search, and comes back with
