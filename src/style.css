@@ -316,6 +316,15 @@ button.secondary:hover { background: var(--accent-soft); }
 .act:hover { text-decoration-color: var(--ink); }
 .act:disabled { color: var(--muted); cursor: default; }
 
+/* ---------- Reading options ---------- */
+/* Larger text: the reading parts of the page grow; the controls stay as they are. */
+.read-large .output, .read-large .spin, .read-large .out-foot, .read-large .how { zoom: 1.18; }
+/* Easy reading: a plain sans font, more space between lines, letters and words, and shorter lines. */
+.read-easy .output li, .read-easy .output p, .read-easy .clip, .read-easy .how span {
+  font-family: var(--sans) !important; line-height: 1.75 !important; letter-spacing: .02em; word-spacing: .1em; }
+.read-easy .output .card:nth-child(1) p { font-family: var(--sans) !important; font-weight: 700; letter-spacing: 0; line-height: 1.25 !important; }
+.read-easy .output ul, .read-easy .output p { max-width: 68ch; }
+
 /* ---------- Library ---------- */
 .lib-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); column-gap: 32px; }
 .lib-list .empty { color: var(--muted); font-style: italic; }

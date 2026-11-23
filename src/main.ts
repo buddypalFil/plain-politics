@@ -40,6 +40,7 @@ const input2 = $<HTMLTextAreaElement>("input2"); // Text B, only in Compare mode
 const charCount = $("char-count");
 const langSel = $<HTMLSelectElement>("lang");
 const runSel = $<HTMLSelectElement>("run");
+const readingSel = $<HTMLSelectElement>("reading");
 const explainBtn = $<HTMLButtonElement>("explain");
 const setupBtn = $<HTMLButtonElement>("setup-device");
 const deviceHelp = $("device-help");
@@ -992,6 +993,43 @@ const booted = (async () => {
 })();
 if (embedded && window.parent !== window) window.parent.postMessage({ type: "pp-ready" }, "*");
 void booted.then(renderLibrary);
+
+// ---------- Reading options: larger text, easy reading (kept in this browser) ----------
+function applyReading(): void {
+  const v = readingSel.value;
+  document.body.classList.toggle("read-large", v.includes("large"));
+  document.body.classList.toggle("read-easy", v.includes("easy"));
+}
+{
+  const saved = store.get("pp-reading");
+  if (saved && [...readingSel.options].some((o) => o.value === saved)) readingSel.value = saved;
+  applyReading();
+}
+readingSel.addEventListener("change", () => {
+  store.set("pp-reading", readingSel.value);
+  applyReading();
+});
+
+// ---------- Keep the text through an accidental reload ----------
+// Kept in sessionStorage: only this tab, gone when the tab is closed, never sent anywhere.
+const DRAFT_KEYS: [HTMLTextAreaElement, string][] = [[input, "pp-draft-a"], [input2, "pp-draft-b"]];
+for (const [box, key] of DRAFT_KEYS) {
+  try {
+    const d = sessionStorage.getItem(key);
+    if (d && !box.value) box.value = d;
+  } catch { /* storage blocked: fine */ }
+  box.addEventListener("input", () => {
+    try { sessionStorage.setItem(key, box.value); } catch { /* storage blocked or full: fine */ }
+  });
+}
+// Samples, photos and videos fill the boxes without typing, so save once more as the page goes away.
+addEventListener("pagehide", () => {
+  for (const [box, key] of DRAFT_KEYS) {
+    try { sessionStorage.setItem(key, box.value); } catch { /* fine */ }
+  }
+});
+updateCount();
+updatePrivacy();
 
 // ---------- Works offline, installable ----------
 // The service worker keeps a copy of the site on this device (see public/sw.js). Not in the extension's panel,
