@@ -12,6 +12,7 @@ import { renderMarkdown, firstLine, escapeHtml } from "./markdown.ts";
 import { getDeviceStatus, hasPromptApi, warmUpDevice } from "./device.ts";
 import { readingAge } from "./readability.ts";
 import { SAMPLES, COMPARE_SAMPLES } from "./samples.ts";
+import { findSpin, countByKind, highlightHtml, SPIN_KINDS, type SpinKind } from "./spin.ts";
 import { findPersonalData, describeFindings, redact, redactKnown, type Finding } from "./privacy.ts";
 import {
   isConfigured,
@@ -124,6 +125,45 @@ function shapeDiffer(lang: Lang): void {
     li.innerHTML = `${topic ? topic.outerHTML : ""}<span class="ab"><b>A</b>${m[1].replace(/[.;,]\s*$/, ".")}</span><span class="ab"><b>B</b>${m[2]}</span>`;
   }
 }
+
+// ---------- Spot the spin (word list, on the device) ----------
+const spinBox = $("spin");
+const spinKinds = $("spin-kinds");
+const spinWhy = $("spin-why");
+const spinClips = $("spin-clips");
+const SPIN_ALL_WHY = "Pick a kind to see only those words, and why they matter.";
+function showSpin(texts: string[]): void {
+  const found = texts.map((t) => findSpin(t));
+  const total = found.reduce((n, f) => n + f.length, 0);
+  const counts = countByKind(found.flat());
+  spinBox.hidden = false;
+  spinKinds.innerHTML = total
+    ? [`<button type="button" data-kind="" aria-pressed="true">All <b>${total}</b></button>`,
+       ...(Object.keys(SPIN_KINDS) as SpinKind[]).filter((k) => counts[k]).map((k) => `<button type="button" data-kind="${k}" aria-pressed="false" class="k-${k}">${SPIN_KINDS[k].name} <b>${counts[k]}</b></button>`)].join("")
+    : "";
+  spinWhy.textContent = total ? SPIN_ALL_WHY : "No loaded words from our list in this text.";
+  spinClips.className = "spin-clips";
+  spinClips.innerHTML = total
+    ? texts.map((t, i) => `<div class="clip-wrap">${texts.length > 1 ? `<div class="tlabel">Text ${"AB"[i]} · ${found[i].length}</div>` : ""}<div class="clip">${highlightHtml(t, found[i])}</div></div>`).join("")
+    : "";
+  scrollClipsToFirst("", false);
+}
+// In a long text the first marked word may be below the visible part of the box: bring it into view.
+function scrollClipsToFirst(kind: SpinKind | "", smooth: boolean): void {
+  for (const clip of spinClips.querySelectorAll<HTMLElement>(".clip")) {
+    const mark = clip.querySelector<HTMLElement>(kind ? `mark.k-${kind}` : "mark");
+    clip.scrollTo({ top: mark ? Math.max(0, mark.offsetTop - 48) : 0, behavior: smooth ? "smooth" : "instant" });
+  }
+}
+spinKinds.addEventListener("click", (e) => {
+  const b = (e.target as HTMLElement).closest<HTMLButtonElement>("button[data-kind]");
+  if (!b) return;
+  const kind = b.dataset.kind as SpinKind | "";
+  for (const x of spinKinds.querySelectorAll("button")) x.setAttribute("aria-pressed", String(x === b));
+  spinClips.className = `spin-clips${kind ? ` only only-${kind}` : ""}`;
+  spinWhy.textContent = kind ? SPIN_KINDS[kind].why : SPIN_ALL_WHY;
+  scrollClipsToFirst(kind, true);
+});
 
 // ---------- Check this claim ----------
 function addClaimButtons(lang: Lang): void {
@@ -446,6 +486,7 @@ async function explain(): Promise<void> {
   explainBtn.textContent = compare ? "Comparing…" : "Explaining…";
   actions.hidden = true;
   $("gauge").hidden = true;
+  spinBox.hidden = true;
   stopSpeaking();
   routeNote.hidden = false;
   routeNote.textContent = route.reason;
@@ -497,6 +538,7 @@ async function explain(): Promise<void> {
     // Reading age compares one original with its explainer, so it is left out of comparisons.
     if (!compare) showGauge(text, output.innerText, lang);
     else shapeDiffer(lang);
+    showSpin(compare ? [a, b] : [a]);
     addClaimButtons(lang);
     lastResult = { markdown, source, lang, text, findings };
     actions.hidden = false;
@@ -583,6 +625,7 @@ async function renderLibrary(): Promise<void> {
     li.querySelector(".link")!.addEventListener("click", () => {
       output.innerHTML = renderMarkdown(item.markdown);
       badge.hidden = true;
+      spinBox.hidden = true;
       $("route").hidden = true;
       $("gauge").hidden = true;
       routeNote.hidden = false;

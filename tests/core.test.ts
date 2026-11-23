@@ -140,3 +140,30 @@ test("compare samples: fictional pairs with two real texts each", async () => {
     assert.match(s.b, /fictional/);
   }
 });
+
+test("spot the spin: finds loaded words by kind, longer phrase wins, no overlaps", async () => {
+  const { findSpin, countByKind } = await import("../src/spin.ts");
+  const t = "For too long we were forgotten. My opponents say nothing. I will fight for you. We can’t afford to wait: it's time.";
+  const m = findSpin(t);
+  const got = m.map((x) => `${x.text.toLowerCase()}:${x.kind}`);
+  assert.deepEqual(got, ["for too long:emotion", "forgotten:emotion", "my opponents:sides", "nothing:sweeping", "fight for:soft", "can’t afford:pressure", "it's time:pressure"]);
+  for (let i = 1; i < m.length; i++) assert.ok(m[i].start >= m[i - 1].end);
+  assert.equal(t.slice(m[0].start, m[0].end), "For too long");
+  assert.deepEqual(countByKind(m), { emotion: 2, sides: 1, sweeping: 1, soft: 1, pressure: 2 });
+});
+
+test("spot the spin: whole words only, wildcard endings, plain text finds nothing", async () => {
+  const { findSpin } = await import("../src/spin.ts");
+  assert.equal(findSpin("Nevertheless the alwaysOn setting is fine.").length, 0);
+  assert.deepEqual(findSpin("They betrayed us. A betrayal.").map((x) => x.text), ["betrayed", "betrayal"]);
+  assert.equal(findSpin("The council will build 800 homes over four years.").length, 0);
+});
+
+test("spot the spin: highlighted HTML is escaped", async () => {
+  const { findSpin, highlightHtml } = await import("../src/spin.ts");
+  const t = "<b>Never</b> & always";
+  const html = highlightHtml(t, findSpin(t));
+  assert.ok(html.startsWith("&lt;b&gt;<mark class=\"k-sweeping\""));
+  assert.ok(html.includes("&amp; <mark"));
+  assert.ok(!html.includes("<b>"));
+});

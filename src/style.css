@@ -260,6 +260,26 @@ button.secondary:hover { background: var(--accent-soft); }
 .output .ghost.pending { opacity: .7; margin-top: 10px; }
 .output .ghost.pending li:first-child { font: 800 12px/1 var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); border-top: 1px dashed var(--line); padding-top: 10px; }
 
+/* Spot the spin: the original text with loaded words marked in rust (rust = "pay attention") */
+.spin { margin-top: 22px; border-top: 3px solid var(--ink); padding-top: 12px; }
+.spin-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.spin-head h3 { margin: 0; font: 800 12px/1.2 var(--sans); letter-spacing: .14em; text-transform: uppercase; }
+.spin-head span { font: 600 10.5px/1.2 var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.spin-kinds { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; }
+.spin-kinds button { border: 1.5px solid var(--ink); background: transparent; padding: 5px 9px; cursor: pointer; font: 600 12px/1.2 var(--sans); color: var(--ink); }
+.spin-kinds button b { font-weight: 800; margin-left: 3px; }
+.spin-kinds button:hover { background: var(--accent-soft); }
+.spin-kinds button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.spin-why { margin: 10px 0 0; font: italic 400 15px/1.45 var(--serif); color: var(--ink-2); }
+.spin-clips { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 12px; }
+.spin-clips .tlabel { margin-bottom: 6px; }
+.clip { position: relative; max-height: 300px; overflow: auto; padding: 12px 14px; background: var(--panel); border: 1px solid var(--line); font: 400 15px/1.6 var(--serif); white-space: pre-wrap; color: var(--ink-2); }
+.clip mark { background: var(--warn-soft); color: var(--ink); border-bottom: 2px solid var(--warn); padding: 0 1px; cursor: help; transition: background .15s ease, border-color .15s ease; }
+.spin-clips.only mark { background: transparent; border-bottom-color: transparent; }
+.spin-clips.only-emotion mark.k-emotion, .spin-clips.only-sweeping mark.k-sweeping, .spin-clips.only-sides mark.k-sides,
+.spin-clips.only-pressure mark.k-pressure, .spin-clips.only-soft mark.k-soft, .spin-clips.only-source mark.k-source { background: var(--warn-soft); border-bottom-color: var(--warn); }
+.spin-note { margin: 10px 0 0; font: 500 12px/1.45 var(--sans); color: var(--muted); }
+
 /* Reading age and actions, at the foot of the story */
 .out-foot { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; flex-wrap: wrap; margin-top: 22px; border-top: 1px solid var(--ink); padding-top: 12px; }
 .out-foot:has(> #gauge[hidden]):has(> #actions[hidden]) { display: none; }
