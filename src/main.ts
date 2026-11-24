@@ -738,29 +738,44 @@ async function explainOnce(): Promise<void> {
   try {
     const model = makeModel(route.mode, lang, settings.cloudModel);
     const prompt = compare ? buildComparePrompt(a, b, lang, level) : buildPrompt(text, lang, level, mode);
-    // When Google's cloud model is overloaded it can stop mid-answer. Try again
-    // a couple of times, after a short pause, before giving up.
+    // When Google's cloud model is overloaded it can stop mid-answer: it streams part of the explainer, then ends
+    // with a "high demand" error. Try again after a short pause. The first tries stream (fastest when Google is
+    // healthy); the later ones ask for the whole answer in one go, which got through more often in busy spells.
     let final;
+    let longestPartial = "";
     for (let attempt = 1; ; attempt++) {
       try {
         markdown = "";
         const cancel = new AbortController();
-        // timeout: how long to wait for the cloud to start answering at all (the library's default is 3 minutes).
-        const result = await model.generateContentStream(prompt, { signal: cancel.signal, timeout: FIRST_WORDS_MS });
-        // If the stream breaks, result.response fails too; the loop's error is the one handled (and retried),
-        // so mark this one as seen rather than leave an "uncaught" error in the console.
-        result.response.catch(() => {});
-        // Give up on an answer that goes quiet (the first words can take a while on the device), then retry.
-        for await (const chunk of withStallLimit(result.stream, FIRST_WORDS_MS, NEXT_WORDS_MS, () => cancel.abort())) {
-          markdown += chunk.text();
-          output.innerHTML = renderMarkdown(markdown) + pendingSections(markdown, runSections);
+        if (attempt >= WHOLE_ANSWER_FROM) {
+          output.innerHTML = pendingSections("", runSections);
+          const whole = await model.generateContent(prompt, { signal: cancel.signal, timeout: WHOLE_ANSWER_MS });
+          markdown = whole.response.text();
+          output.innerHTML = renderMarkdown(markdown);
+          final = whole.response;
+        } else {
+          // timeout: how long to wait for the cloud to start answering at all (the library's default is 3 minutes).
+          const result = await model.generateContentStream(prompt, { signal: cancel.signal, timeout: FIRST_WORDS_MS });
+          // If the stream breaks, result.response fails too; the loop's error is the one handled (and retried),
+          // so mark this one as seen rather than leave an "uncaught" error in the console.
+          result.response.catch(() => {});
+          // Give up on an answer that goes quiet (the first words can take a while on the device), then retry.
+          for await (const chunk of withStallLimit(result.stream, FIRST_WORDS_MS, NEXT_WORDS_MS, () => cancel.abort())) {
+            markdown += chunk.text();
+            output.innerHTML = renderMarkdown(markdown) + pendingSections(markdown, runSections);
+          }
+          output.innerHTML = renderMarkdown(markdown);
+          final = await result.response;
         }
-        output.innerHTML = renderMarkdown(markdown);
-        final = await result.response;
         if (attempt > 1) routeNote.textContent = `${route.reason} (Google's cloud was busy; it worked on try ${attempt}.)`;
         break;
       } catch (e) {
-        if (attempt >= MAX_ATTEMPTS || !isBusyError(e)) throw e;
+        if (markdown.length > longestPartial.length) longestPartial = markdown;
+        if (attempt >= MAX_ATTEMPTS || !isBusyError(e)) {
+          // Show the most that ever arrived, not just what the last try managed.
+          markdown = longestPartial;
+          throw e;
+        }
         output.innerHTML = "";
         routeNote.textContent = `Google's cloud AI is busy. Trying again (${attempt + 1} of ${MAX_ATTEMPTS})…`;
         await new Promise((r) => setTimeout(r, 1500 * attempt));
@@ -793,7 +808,10 @@ async function explainOnce(): Promise<void> {
   }
 }
 
-const MAX_ATTEMPTS = 3;
+const MAX_ATTEMPTS = 4;
+// From this try on, ask for the whole answer at once instead of a stream, and wait up to this long for it.
+const WHOLE_ANSWER_FROM = 3;
+const WHOLE_ANSWER_MS = 60_000;
 // How long an answer may stay silent: before its first words, then between words.
 const FIRST_WORDS_MS = 45_000;
 const NEXT_WORDS_MS = 25_000;

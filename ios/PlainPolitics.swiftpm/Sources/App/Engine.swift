@@ -120,8 +120,12 @@ final class Engine: ObservableObject {
             gemini: GenerationConfig(temperature: 0.3, maxOutputTokens: 1600),
             foundationModels: FirebaseAI.GenerationOptions(temperature: 0.3, maximumResponseTokens: 1600)
         )
-        // If Google's servers are briefly overloaded, try once more after a short pause before showing an error.
-        for attempt in 1...2 {
+        // When Google's servers are overloaded, the cloud can stop mid-answer with a "high demand" error. Try again
+        // after a short pause. The first two tries stream (fastest when Google is healthy); the last asks for the
+        // whole answer in one go, which got through more often in busy spells (same as the website).
+        let attempts = 3
+        var longestPartial = ""
+        for attempt in 1...attempts {
             // A fresh session each time, so a failed attempt isn't part of the conversation.
             let session = switch place {
             case .deviceFirst: ai.generativeModelSession(model: .hybridModel(primary: device, secondary: cloud))
@@ -130,20 +134,29 @@ final class Engine: ObservableObject {
             }
             do {
                 markdown = ""
-                // The answer streams in; each snapshot holds the whole answer so far.
-                for try await snapshot in session.streamResponse(to: prompt, options: options) {
-                    markdown = snapshot.content
-                    // Firebase names Apple's on-device model "apple-foundation-models-system-language-model".
-                    ranOnDevice = snapshot.rawResponse.modelVersion.contains("apple-foundation-models")
+                if attempt == attempts {
+                    let whole = try await session.respond(to: prompt, options: options)
+                    markdown = whole.content
+                    ranOnDevice = whole.rawResponse.modelVersion.contains("apple-foundation-models")
+                } else {
+                    // The answer streams in; each snapshot holds the whole answer so far.
+                    for try await snapshot in session.streamResponse(to: prompt, options: options) {
+                        markdown = snapshot.content
+                        // Firebase names Apple's on-device model "apple-foundation-models-system-language-model".
+                        ranOnDevice = snapshot.rawResponse.modelVersion.contains("apple-foundation-models")
+                    }
                 }
                 if ranOnDevice == nil { ranOnDevice = place == .deviceOnly }
                 if ranOnDevice == true { deviceAnswers = true }
                 return
             } catch {
-                if attempt == 1 && Self.isBusy(error) {
-                    try? await Task.sleep(for: .seconds(2))
+                if markdown.count > longestPartial.count { longestPartial = markdown }
+                if attempt < attempts && Self.isBusy(error) {
+                    try? await Task.sleep(for: .seconds(2 * attempt))
                     continue
                 }
+                // Show the most that ever arrived, not just what the last try managed.
+                markdown = longestPartial
                 self.error = friendly(error)
                 return
             }

@@ -28,7 +28,7 @@ It works in English, Italian, French, Spanish and German, and never takes sides 
 | **Compare** | Two texts on the same topic side by side: where they agree, where they differ (an A and a B line per topic), who each would affect, claims from both, questions. Treats both the same and never says which is better | Device first, cloud if needed |
 | **Spot the spin** | Marks loaded words in the original: emotional words, sweeping words, us and them, pressure, soft promises, no source. Filter by kind, with a plain reason for each. A fixed word list, no AI | Always on the device |
 | **Check this claim** | Says what kind of claim it is (fact, prediction, promise, opinion) and where the evidence would be, plus Google Fact Check Explorer and Search links. Never guesses true or false. Only that one sentence can go to the cloud | Device first, cloud if needed |
-| **Privacy guard** | Finds emails, phone numbers, postcodes, card, bank and National Insurance numbers, and a name given as "my name is…". Such a text only runs on the device; if it can't, nothing is sent, and one button removes the details | Always on the device |
+| **Privacy guard** | Finds emails, phone numbers, home addresses, postcodes, card, bank and National Insurance numbers, and a name given as "my name is…". Such a text only runs on the device; if it can't, nothing is sent, and one button removes the details | Always on the device |
 | **Read a photo** | Copies the text of a leaflet, poster or newspaper cutting into the box, where the reader checks it and the privacy guard scans it | Device first; asks before using the cloud |
 | **Read a video, recording or YouTube link** | Writes out what is said in a speech, then it is explained like any text | Cloud only (asks first for files) |
 | **Reading age** | The reading age of the original and of the explainer (English), e.g. 14 → 9 | Always on the device |
@@ -111,11 +111,15 @@ The iPhone app uses **Firebase AI Logic** (hybrid, with Apple's on-device model)
 
 - **Lighthouse** on the live site: **100 / 100 / 100 / 100** (performance, accessibility, best practices, SEO) on
   mobile and on desktop; first paint 0.9 s on a simulated slow phone.
-- **34 unit tests** (routing including offline, privacy guard, prompts in every language, Spot the spin, YouTube
+- **36 unit tests** (routing including offline, privacy guard, prompts in every language, Spot the spin, YouTube
   links, error messages, reading age, safe Markdown, giving up on a silent answer) and an end-to-end browser check
-  of every feature before each release. The iPhone app's core logic has 28 checks of its own, on the same cases.
-- **Never stuck waiting**: if the cloud goes silent mid-answer, the page gives up after 25 seconds, tries again, and
-  after three tries says so in plain words ([`src/stream.ts`](src/stream.ts)).
+  of every feature before each release. The iPhone app's core logic has 49 checks of its own, on the same cases.
+- **Never stuck waiting**: if the cloud goes silent mid-answer, the page gives up after 25 seconds and tries again
+  ([`src/stream.ts`](src/stream.ts)).
+- **Rides out Google's busy spells**: when Gemini is overloaded it can send half an explainer and then a "high demand"
+  error. The page tries again: twice as a stream, then twice asking for the whole answer at once, which got through
+  more often when we measured a busy spell. Only after four tries does it say so in plain words, keeping the most text
+  that arrived.
 
 ## Run it yourself
 
@@ -123,7 +127,7 @@ Needs Node.js 22.18 or newer (the tests run the TypeScript files directly).
 
 ```bash
 npm install
-npm test        # 34 unit tests
+npm test        # 36 unit tests
 npm run dev     # http://localhost:5173
 ```
 
@@ -193,9 +197,10 @@ Where it runs follows the website's rules
 - **Checks the model really answers.** Settings can say Apple Intelligence is on while its model is still
   downloading. So when the app opens (and when you come back to it), it asks Apple's model for one word. Until the
   model answers, the top of the screen says "Using the cloud" and explains why, instead of "On-device AI ready".
-- **Never stuck waiting.** A cloud request gives up after 30 seconds of silence and is tried once more.
+- **Never stuck waiting.** A cloud request gives up after 30 seconds of silence. A busy or silent cloud is tried three
+  times: twice as a stream, then once asking for the whole answer at once (same idea as the website).
 - **App Check** protects the cloud calls (the debug provider in development builds).
-- The privacy guard, Spot the spin and the routing are plain Swift with no Firebase, checked by 28 tests on the same
+- The privacy guard, Spot the spin and the routing are plain Swift with no Firebase, checked by 49 tests on the same
   cases as the website ([`CoreTests/main.swift`](ios/PlainPolitics.swiftpm/CoreTests/main.swift)).
 
 **Run it.** The app targets iOS 26 and was built and tested with Xcode 27.2 and the iOS 27.2 Simulator. Open
