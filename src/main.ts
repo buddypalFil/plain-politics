@@ -58,6 +58,8 @@ const privacyBox = $("privacy");
 const privacyText = $("privacy-text");
 const redactBtn = $<HTMLButtonElement>("redact");
 const redactSendBtn = $<HTMLButtonElement>("redact-send");
+// The explainer area as the page first shows it, so "Explain another text" can put it back.
+const EMPTY_OUTPUT = $("output").innerHTML;
 const sourceNote = $("source-note");
 
 let settings: Settings = { cloudModel: "gemini-3.5-flash-lite", deviceCharLimit: 20000, claimGrounding: false };
@@ -310,6 +312,7 @@ function renderChoices(): void {
   document.body.classList.toggle("compare-on", comparing());
   input.placeholder = comparing() ? "Paste the first text here…" : "Paste the text here…";
   if (!explainBtn.disabled) explainBtn.textContent = explainLabel();
+  $("again").textContent = comparing() ? "Compare two other texts ↑" : "Explain another text ↑";
   updateCount();
   updatePrivacy();
   // The outline only exists before the first result (a result replaces it), so it may be gone.
@@ -652,6 +655,28 @@ ytUrl.addEventListener("keydown", (e) => {
 
 // ---------- Explain ----------
 explainBtn.addEventListener("click", () => void booted.then(() => explain()));
+
+// ---------- Explain another text ----------
+// After a result: clear the text and the explainer, and take the reader back up to an empty box.
+// (A tester's first wish: "add a button once you have done one text to do another one".)
+const againBtn = $<HTMLButtonElement>("again");
+function startOver(): void {
+  if (running) return;
+  stopSpeaking();
+  hideError();
+  for (const el of [actions, badge, routeNote, spinBox, $("gauge"), $("route"), redactSendBtn, sourceNote]) el.hidden = true;
+  output.innerHTML = EMPTY_OUTPUT;
+  lastResult = null;
+  for (const box of [input, input2]) {
+    box.value = "";
+    // Same path as typing, so the saved draft, the count and the privacy guard all follow.
+    box.dispatchEvent(new Event("input"));
+  }
+  renderChoices();
+  $("input-panel").scrollIntoView({ behavior: "smooth", block: "start" });
+  input.focus({ preventScroll: true });
+}
+againBtn.addEventListener("click", startOver);
 // Ctrl+Enter (Cmd+Enter on a Mac) in a text box explains it.
 for (const box of [input, input2]) {
   box.addEventListener("keydown", (e) => {
