@@ -5,7 +5,7 @@
 import Foundation
 
 enum PersonalKind: String, CaseIterable {
-    case email, phone, postcode, niNumber, card, iban, selfDescription, ownName
+    case email, phone, postcode, niNumber, card, iban, selfDescription, address, ownName
 
     var label: String {
         switch self {
@@ -16,6 +16,7 @@ enum PersonalKind: String, CaseIterable {
         case .card: return "card number"
         case .iban: return "bank account number"
         case .selfDescription: return "home address or birth date"
+        case .address: return "street address"
         case .ownName: return "name"
         }
     }
@@ -29,6 +30,7 @@ enum PersonalKind: String, CaseIterable {
         case .card: return "[card number]"
         case .iban: return "[bank account]"
         case .selfDescription: return "[address]"
+        case .address: return "[address]"
         case .ownName: return "[name]"
         }
     }
@@ -68,6 +70,28 @@ private func luhnOK(_ d: String) -> Bool {
     return sum % 10 == 0
 }
 
+// Street types for home addresses ("14 Mill Lane", "Flat 2, 30 Station Road").
+// Not "Court" or "Row": "12 High Court judges" and "3 Death Row inmates" are politics, not homes.
+private let street = "(?:Street|St|Road|Rd|Lane|Avenue|Ave|Close|Drive|Way|Crescent|Gardens|Grove|Place|Terrace|Square|Mews|Walk|Boulevard|Parade)"
+// Addresses everyone knows are public, not a private person's home.
+private let publicAddress = re(#"^(?:9|10|11|12) Downing Street$|^1600 Pennsylvania Avenue$|^1 Horse Guards Road$|^2 Marsham Street$|^(?:1|39) Victoria Street$|^100 Parliament Street$"#, [.caseInsensitive])
+private let flatPrefix = re(#"^(?:Flat|Apartment|Apt) \d+[A-Za-z]?,? "#)
+private let month = re(#"^\d+[A-Za-z]?,? (?:January|February|March|April|May|June|July|August|September|October|November|December)\b"#)
+
+private func matches(_ r: NSRegularExpression, _ s: String) -> Bool {
+    r.firstMatch(in: s, range: NSRange(location: 0, length: (s as NSString).length)) != nil
+}
+
+/// A house number followed by a street. Not a year ("In 2019 Parliament Square…"), not a date ("On 12 May Parliament
+/// Square…") and not a famous public address. Same rule as the website.
+private func looksLikeHomeAddress(_ m: String) -> Bool {
+    let s = flatPrefix.stringByReplacingMatches(in: m, range: NSRange(location: 0, length: (m as NSString).length), withTemplate: "")
+    if matches(month, s) { return false }
+    let nums = m.split(whereSeparator: { !$0.isNumber }).map(String.init)
+    if let house = nums.last, house.count == 4, let n = Int(house), (1800...2099).contains(n) { return false }
+    return !matches(publicAddress, s)
+}
+
 private let rules: [Rule] = [
     Rule(kind: .email, regex: re(#"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"#)),
     Rule(kind: .iban, regex: re(#"\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]{4}){3,7}(?: ?[A-Z0-9]{1,3})?\b"#)),
@@ -84,6 +108,10 @@ private let rules: [Rule] = [
     }),
     // Only phrases that point at a private person's details (politicians often say "my name is…").
     Rule(kind: .selfDescription, regex: re(#"\b(?:I live at|my (?:home )?address is|my date of birth is|I was born on)\s+(\d[^.;\n]{0,60})"#, [.caseInsensitive]), group: 1),
+    // "I live on Mill Lane": a street given as where the writer lives, even without a house number.
+    Rule(kind: .address, regex: re(#"\b(?:I|[Ww]e) live (?:on|in|at) ((?:[A-Z][a-z'’-]+ ){1,3}"# + street + #")\b"#), group: 1),
+    // "14 Mill Lane", "Flat 2, 30 Station Road", "221B Baker Street".
+    Rule(kind: .address, regex: re(#"\b(?:(?:Flat|Apartment|Apt) \d+[A-Za-z]?,? )?\d{1,4}[A-Za-z]?,? (?:[A-Z][a-z'’-]+ ){1,3}"# + street + #"\b"#), check: looksLikeHomeAddress),
     // A name someone gives as their own ("My name is Jordan Patel"). Every other mention is removed too.
     Rule(kind: .ownName, regex: re(#"\b[Mm]y name is ((?:[A-Z][a-z'’-]+)(?: [A-Z][a-z'’-]+){0,2})"#), group: 1),
     Rule(kind: .postcode, regex: re(#"\b[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}\b"#)),

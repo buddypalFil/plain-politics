@@ -72,3 +72,28 @@ test("a name given in one text is removed from the other too (Compare)", async (
   assert.ok(!ra.includes("Jordan") && !rb.includes("Jordan"), `${ra} | ${rb}`);
   assert.equal(findPersonalData(`${ra}\n\n${rb}`).length, 0);
 });
+
+test("privacy guard finds home street addresses, with or without a house number", () => {
+  assert.deepEqual(kinds("Send it to 14 Mill Lane, please."), ["address"]);
+  assert.deepEqual(kinds("I'm at Flat 2, 30 Station Road now."), ["address"]);
+  assert.deepEqual(kinds("We live on Mill Lane and the bus no longer stops."), ["address"]);
+  assert.deepEqual(kinds("Deliver to 221B Baker Street."), ["address"]);
+  assert.equal(redact("Write to 14 Mill Lane."), "Write to [address].");
+  assert.equal(describeFindings(findPersonalData("Write to 14 Mill Lane.")), "1 street address");
+});
+
+test("privacy guard leaves public places, dates and political phrases alone", () => {
+  for (const t of [
+    "A spokesperson at 10 Downing Street said no.",
+    "Protesters marched to 1600 Pennsylvania Avenue.",
+    "The Treasury, at 1 Horse Guards Road, and the Home Office at 2 Marsham Street.",
+    "In 2019 Parliament Square filled with protesters.",
+    "On 12 May Parliament Square was closed.",
+    "The 12 High Court judges disagreed.",
+    "There are 3 Death Row inmates left.",
+    "Downing Street confirmed it. Wall Street fell.",
+    "I live in Northvale, where the buses were cut.",
+  ]) {
+    assert.deepEqual(findPersonalData(t), [], t);
+  }
+});

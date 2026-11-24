@@ -303,7 +303,7 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 8) {
             Rectangle().fill(Color.ink).frame(height: 3)
             Kicker(text: "How it works")
-            Text("1. **Your text** stays in the app. 2. The **privacy guard** looks for emails, phone numbers, postcodes, bank, card and National Insurance numbers and your own name, on your device. 3. **Apple Intelligence** explains it on your device when it can; **Gemini** in the cloud only when it can't, never with personal details. 4. A **stamp** says where it ran.")
+            Text("1. **Your text** stays in the app. 2. The **privacy guard** looks for emails, phone numbers, home addresses, postcodes, bank, card and National Insurance numbers and your own name, on your device. 3. **Apple Intelligence** explains it on your device when it can; **Gemini** in the cloud only when it can't, never with personal details. 4. A **stamp** says where it ran.")
                 .font(.serif(14)).foregroundStyle(Color.ink2)
             Text("Spot the spin always runs on your device. AI can make mistakes, so check important claims against the original source.")
                 .font(.system(size: 12, weight: .medium)).foregroundStyle(Color.muted)

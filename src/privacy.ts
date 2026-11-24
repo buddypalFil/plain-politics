@@ -2,7 +2,8 @@
 // If a text has personal details, it may only run on this device, or the details
 // must be removed first. Kept free of Firebase and the DOM so it can be tested.
 
-export type PersonalKind = "email" | "phone" | "postcode" | "ni-number" | "card" | "iban" | "self-description" | "own-name";
+export type PersonalKind =
+  | "email" | "phone" | "postcode" | "ni-number" | "card" | "iban" | "self-description" | "address" | "own-name";
 
 export interface Finding {
   kind: PersonalKind;
@@ -18,6 +19,7 @@ export const KIND_LABEL: Record<PersonalKind, string> = {
   card: "card number",
   iban: "bank account number",
   "self-description": "home address or birth date",
+  address: "street address",
   "own-name": "name",
 };
 
@@ -29,6 +31,7 @@ const PLACEHOLDER: Record<PersonalKind, string> = {
   card: "[card number]",
   iban: "[bank account]",
   "self-description": "[address]",
+  address: "[address]",
   "own-name": "[name]",
 };
 
@@ -46,6 +49,27 @@ function luhnOk(digits: string): boolean {
     double = !double;
   }
   return sum % 10 === 0;
+}
+
+// Street types for home addresses ("14 Mill Lane", "Flat 2, 30 Station Road").
+const STREET =
+  "(?:Street|St|Road|Rd|Lane|Avenue|Ave|Close|Drive|Way|Crescent|Gardens|Grove|Place|Terrace|Square|Mews|Walk|Boulevard|Parade)";
+// Not "Court" or "Row": "12 High Court judges" and "3 Death Row inmates" are politics, not homes.
+// Addresses everyone knows are public, not a private person's home.
+const PUBLIC_ADDRESS =
+  /^(?:9|10|11|12) Downing Street$|^1600 Pennsylvania Avenue$|^1 Horse Guards Road$|^2 Marsham Street$|^(?:1|39) Victoria Street$|^100 Parliament Street$/i;
+
+const MONTH = /^\d+[A-Za-z]?,? (?:January|February|March|April|May|June|July|August|September|October|November|December)\b/;
+
+// A house number followed by a street. Not a year ("In 2019 Parliament Square…"), not a date ("On 12 May Parliament
+// Square…") and not a famous public address.
+function looksLikeHomeAddress(m: string): boolean {
+  const street = m.replace(/^(?:Flat|Apartment|Apt) \d+[A-Za-z]?,? /, "");
+  if (MONTH.test(street)) return false;
+  const nums = m.match(/\d+/g) ?? [];
+  const house = Number(nums[nums.length - 1]);
+  if (nums[nums.length - 1]?.length === 4 && house >= 1800 && house <= 2099) return false;
+  return !PUBLIC_ADDRESS.test(street);
 }
 
 interface Rule {
@@ -82,6 +106,18 @@ const RULES: Rule[] = [
     // Only phrases that point at a private person's details (politicians often say "my name is…").
     re: /\b(?:I live at|my (?:home )?address is|my date of birth is|I was born on)\s+(\d[^.;\n]{0,60})/gi,
     group: 1,
+  },
+  // "I live on Mill Lane": a street given as where the writer lives, even without a house number.
+  {
+    kind: "address",
+    re: new RegExp(`\\b(?:I|[Ww]e) live (?:on|in|at) ((?:[A-Z][a-z'’-]+ ){1,3}${STREET})\\b`, "g"),
+    group: 1,
+  },
+  // "14 Mill Lane", "Flat 2, 30 Station Road", "221B Baker Street".
+  {
+    kind: "address",
+    re: new RegExp(`\\b(?:(?:Flat|Apartment|Apt) \\d+[A-Za-z]?,? )?\\d{1,4}[A-Za-z]?,? (?:[A-Z][a-z'’-]+ ){1,3}${STREET}\\b`, "g"),
+    check: looksLikeHomeAddress,
   },
   // A name someone gives as their own ("My name is Jordan Patel"). Every other mention of that name is removed too.
   { kind: "own-name", re: /\b[Mm]y name is ((?:[A-Z][a-z'’-]+)(?: [A-Z][a-z'’-]+){0,2})/g, group: 1 },

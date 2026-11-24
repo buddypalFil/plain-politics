@@ -29,6 +29,25 @@ do {
     expect(!redactKnown(redact(b), both).contains("Jordan"), "name removed from the other text")
 }
 
+// Street addresses (same cases as tests/privacy.test.ts)
+do {
+    for t in ["Send it to 14 Mill Lane, please.", "I'm at Flat 2, 30 Station Road now.",
+              "We live on Mill Lane and the bus no longer stops.", "Deliver to 221B Baker Street."] {
+        expect(findPersonalData(t).map(\.kind) == [.address], "address found", "\(t) -> \(findPersonalData(t))")
+    }
+    expect(redact("Write to 14 Mill Lane.") == "Write to [address].", "address redacted", redact("Write to 14 Mill Lane."))
+    expect(describeFindings(findPersonalData("Write to 14 Mill Lane.")) == "1 street address", "address described")
+    for t in ["A spokesperson at 10 Downing Street said no.", "Protesters marched to 1600 Pennsylvania Avenue.", "The Treasury, at 1 Horse Guards Road, and the Home Office at 2 Marsham Street.",
+              "In 2019 Parliament Square filled with protesters.", "On 12 May Parliament Square was closed.",
+              "The 12 High Court judges disagreed.", "There are 3 Death Row inmates left.",
+              "Downing Street confirmed it. Wall Street fell.", "I live in Northvale, where the buses were cut."] {
+        expect(findPersonalData(t).isEmpty, "not an address", "\(t) -> \(findPersonalData(t))")
+    }
+    for s in samples where !s.text.contains("Jordan Patel") {
+        expect(findPersonalData(s.text).isEmpty, "sample has no personal details", s.label)
+    }
+}
+
 // Routing
 do {
     let base = RouteInput(choice: .auto, chars: 1000, deviceReady: true)
