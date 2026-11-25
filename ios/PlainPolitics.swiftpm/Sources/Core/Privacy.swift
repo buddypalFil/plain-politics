@@ -15,7 +15,7 @@ enum PersonalKind: String, CaseIterable {
         case .niNumber: return "National Insurance number"
         case .card: return "card number"
         case .iban: return "bank account number"
-        case .selfDescription: return "home address or birth date"
+        case .selfDescription: return "date of birth"
         case .address: return "street address"
         case .ownName: return "name"
         }
@@ -29,7 +29,7 @@ enum PersonalKind: String, CaseIterable {
         case .niNumber: return "[NI number]"
         case .card: return "[card number]"
         case .iban: return "[bank account]"
-        case .selfDescription: return "[address]"
+        case .selfDescription: return "[date of birth]"
         case .address: return "[address]"
         case .ownName: return "[name]"
         }
@@ -75,6 +75,24 @@ private func luhnOK(_ d: String) -> Bool {
 private let street = "(?:Street|St|Road|Rd|Lane|Avenue|Ave|Close|Drive|Way|Crescent|Gardens|Grove|Place|Terrace|Square|Mews|Walk|Boulevard|Parade)"
 // Addresses everyone knows are public, not a private person's home.
 private let publicAddress = re(#"^(?:9|10|11|12) Downing Street$|^1600 Pennsylvania Avenue$|^1 Horse Guards Road$|^2 Marsham Street$|^(?:1|39) Victoria Street$|^100 Parliament Street$"#, [.caseInsensitive])
+// "10 Downing St" and "1600 Pennsylvania Ave" are the same public places.
+private func longStreet(_ s: String) -> String {
+    var t = s
+    for (short, long) in [(#" St\.?$"#, " Street"), (#" Ave\.?$"#, " Avenue"), (#" Rd\.?$"#, " Road")] {
+        t = re(short, [.caseInsensitive]).stringByReplacingMatches(in: t, range: NSRange(location: 0, length: (t as NSString).length), withTemplate: long)
+    }
+    return t
+}
+// Postcodes of public buildings that appear in political texts: Parliament, Downing Street, Buckingham Palace.
+private let publicPostcode = re(#"^SW1A ?[012]AA$"#, [.caseInsensitive])
+// A lower-case postcode ("ne1 4st") only counts after a word that says it is one, or after a street.
+private let postcodeCue = re(#"(?:post ?code|postal code|zip|"# + street + #")\b[^\n]{0,40}$"#, [.caseInsensitive])
+// Words that come before a phone number, in the app's five languages.
+private let phoneCue = #"(?:call|phone|tel|telephone|mobile|cell|ring|whatsapp|chiama\w*|telefon\w*|cellulare|cel|tél\w*|portable|appel\w*|teléfono|móvil|lláma\w*|llam\w*|handy|anruf\w*|ruf)"#
+private let yearsOnly = re(#"^(?:(?:19|20)\d{2}[ .-]?)+$"#)
+/// Digits of a phone number, without the "(0)" of "+44 (0)7700…".
+private func phoneDigits(_ m: String) -> String { digits(m.replacingOccurrences(of: "(0)", with: "")) }
+
 private let flatPrefix = re(#"^(?:Flat|Apartment|Apt) \d+[A-Za-z]?,? "#)
 private let month = re(#"^\d+[A-Za-z]?,? (?:January|February|March|April|May|June|July|August|September|October|November|December)\b"#)
 
@@ -89,7 +107,7 @@ private func looksLikeHomeAddress(_ m: String) -> Bool {
     if matches(month, s) { return false }
     let nums = m.split(whereSeparator: { !$0.isNumber }).map(String.init)
     if let house = nums.last, house.count == 4, let n = Int(house), (1800...2099).contains(n) { return false }
-    return !matches(publicAddress, s)
+    return !matches(publicAddress, longStreet(s))
 }
 
 private let rules: [Rule] = [
@@ -100,21 +118,33 @@ private let rules: [Rule] = [
         return (13...19).contains(d.count) && luhnOK(d)
     }),
     Rule(kind: .niNumber, regex: re(#"\b[A-CEGHJ-PR-TW-Z]{2} ?\d{2} ?\d{2} ?\d{2} ?[A-D]\b"#, [.caseInsensitive])),
-    // UK mobile/landline (07…, 01…, 02…, +44…) and international numbers written with a +.
-    Rule(kind: .phone, regex: re(#"(?:\+\d{1,3}[ -]?)?\(?0?\d{2,5}\)?[ -]?\d{3,4}[ -]?\d{3,4}\b"#), check: { m in
+    // Any number written with a country code: "+44 (0)7700 900123", "+33 6 12 34 56 78", "+39 333 1234567".
+    Rule(kind: .phone, regex: re(#"\+\d{1,3}(?:[ .-]?\(0\))?(?:[ .-]?\(?\d{1,4}\)?){2,6}"#), check: { m in
+        (9...15).contains(phoneDigits(m).count)
+    }),
+    // UK mobile/landline (07…, 01…, 02…).
+    Rule(kind: .phone, regex: re(#"(?<![\d.,])\(?0\d{2,5}\)?[ -]?\d{3,4}[ -]?\d{3,4}\b"#), check: { m in
         let d = digits(m)
-        let looksLikePhone = m.trimmingCharacters(in: .whitespaces).hasPrefix("+") || (d.hasPrefix("0") && d.count > 1 && d.dropFirst().first != "0")
-        return looksLikePhone && (10...13).contains(d.count)
+        return d.hasPrefix("0") && d.count > 1 && d.dropFirst().first != "0" && (10...13).contains(d.count)
+    }),
+    // French numbers in pairs ("06 12 34 56 78") and Italian mobiles ("333 1234567").
+    Rule(kind: .phone, regex: re(#"\b0[1-9](?:[ .-]?\d{2}){4}\b"#)),
+    Rule(kind: .phone, regex: re(#"(?<![\d.,])\b3\d{2}[ .-]?\d{6,7}\b"#)),
+    // After "call me on", "chiamami al", "llámame al", "ruf mich an unter"…: any 9-13 digits in groups (not a run of years).
+    Rule(kind: .phone, regex: re(#"\b"# + phoneCue + #"\b[^\d\n]{0,25}(\(?\d{2,4}\)?(?:[ .-]?\d{2,4}){2,4})"#, [.caseInsensitive]), group: 1, check: { m in
+        (9...13).contains(phoneDigits(m).count) && !matches(yearsOnly, m)
     }),
     // Only phrases that point at a private person's details (politicians often say "my name is…").
-    Rule(kind: .selfDescription, regex: re(#"\b(?:I live at|my (?:home )?address is|my date of birth is|I was born on)\s+(\d[^.;\n]{0,60})"#, [.caseInsensitive]), group: 1),
+    Rule(kind: .address, regex: re(#"\b(?:I live at|my (?:home )?address is)\s+(\d[^.;\n]{0,60})"#, [.caseInsensitive]), group: 1),
+    Rule(kind: .selfDescription, regex: re(#"\b(?:my date of birth is|I was born on)\s+(\d[^.;\n]{0,60})"#, [.caseInsensitive]), group: 1),
     // "I live on Mill Lane": a street given as where the writer lives, even without a house number.
     Rule(kind: .address, regex: re(#"\b(?:I|[Ww]e) live (?:on|in|at) ((?:[A-Z][a-z'’-]+ ){1,3}"# + street + #")\b"#), group: 1),
     // "14 Mill Lane", "Flat 2, 30 Station Road", "221B Baker Street".
     Rule(kind: .address, regex: re(#"\b(?:(?:Flat|Apartment|Apt) \d+[A-Za-z]?,? )?\d{1,4}[A-Za-z]?,? (?:[A-Z][a-z'’-]+ ){1,3}"# + street + #"\b"#), check: looksLikeHomeAddress),
-    // A name someone gives as their own ("My name is Jordan Patel"). Every other mention is removed too.
-    Rule(kind: .ownName, regex: re(#"\b[Mm]y name is ((?:[A-Z][a-z'’-]+)(?: [A-Z][a-z'’-]+){0,2})"#), group: 1),
-    Rule(kind: .postcode, regex: re(#"\b[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}\b"#)),
+    // A name someone gives as their own, in the five languages ("My name is Jordan Patel", "Mi chiamo Giulia Rossi").
+    // Every other mention is removed too.
+    Rule(kind: .ownName, regex: re(#"\b(?:[Mm]y name is|[Mm]i chiamo|[Ii]l mio nome è|[Jj]e m['’]appelle|[Mm]on nom est|[Mm]e llamo|[Mm]i nombre es|[Ii]ch hei(?:ß|ss)e|[Mm]ein Name ist) ((?:[A-ZÀ-Ý][a-zà-ÿ'’-]+)(?: [A-ZÀ-Ý][a-zà-ÿ'’-]+){0,2})"#), group: 1),
+    Rule(kind: .postcode, regex: re(#"\b[A-Za-z]{1,2}\d[A-Za-z\d]? ?\d[A-Za-z]{2}\b"#)),
 ]
 
 func findPersonalData(_ text: String) -> [Finding] {
@@ -133,6 +163,13 @@ func findPersonalData(_ text: String) -> [Finding] {
             let start = r.location + (raw as NSString).range(of: match).location
             let range = NSRange(location: start, length: (match as NSString).length)
             if let check = rule.check, !check(match) { continue }
+            if rule.kind == .postcode {
+                // Upper-case postcodes count anywhere except public buildings; lower-case ones only after a cue.
+                if matches(publicPostcode, match) { continue }
+                let from = max(0, start - 60)
+                let before = ns.substring(with: NSRange(location: from, length: start - from))
+                if match != match.uppercased() && !matches(postcodeCue, before) { continue }
+            }
             if overlaps(range) { continue }
             taken.append(range)
             found.append(Finding(kind: rule.kind, match: match, index: start))

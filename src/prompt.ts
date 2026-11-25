@@ -77,7 +77,8 @@ export function buildPrompt(text: string, lang: Lang, level: Level = "balanced",
     history
       ? `- Use only what is in the text, except in the "${CONTEXT_HEADING[lang]}" section. Never add facts, numbers or names that are not in it.`
       : "- Use only what is in the text. Never add facts, numbers or names that are not in it.",
-    "- Copy every number, percentage and amount exactly as the text writes it. Never work out new numbers.",
+    `- Copy every number, percentage and amount exactly as the text writes it, and never work out new numbers. Write the words around a number in ${LANGUAGE_NAMES[lang]} too (translate words like "miliardi" or "Millionen").`,
+    ...(history ? ["- When the speaker uses a figure of speech (for example calling a campaign a war), report it as the speaker's words, not as a fact."] : []),
     "- If the text does not say something, write that it does not say it.",
     "- Use short sentences and everyday words.",
     ...(limit ? [limit] : []),
@@ -90,8 +91,8 @@ export function buildPrompt(text: string, lang: Lang, level: Level = "balanced",
     `${bullets} with the main points.`,
     `## ${h[2]}`,
     history
-      ? `${bullets}. Each one (do not start with the word "Claim"): a statement the speaker presents as a fact or as something everyone agrees on, then what a reader could check about it with history sources (for example whether it was true for everyone at the time). Pick statements about the world, not dates or arithmetic.`
-      : `${bullets}. Each one: the claim from the text (do not start with the word "Claim"), then why a reader should check it.`,
+      ? `${bullets}. Each one (do not start with the word "Claim"): in bold, a statement the speaker presents as a fact or as something everyone agrees on, in a few words close to the text's own; then one short sentence on what a reader could check about it with history sources (for example whether it was true for everyone at the time). Pick statements about the world, not dates or arithmetic.`
+      : `${bullets}. Each one (do not start with the word "Claim"): in bold, the claim in a few words close to the text's own; then one short sentence on what to check and where (for example official figures).`,
     `## ${h[3]}`,
     history
       ? `${bullets}: the groups of people the speaker talks to or about, and what the text says about them or asks of them. Do not write that the text does not say; name who it addresses.`
@@ -132,7 +133,7 @@ export function buildComparePrompt(a: string, b: string, lang: Lang, level: Leve
     "- Be neutral. Treat both texts the same way, with the same depth and the same tone.",
     "- Never say which text is better, fairer, more convincing or more honest, and never say how to vote.",
     "- Use only what is in the two texts. Never add facts, numbers or names that are not in them.",
-    "- Copy every number, percentage and amount exactly as the texts write it. Never work out new numbers.",
+    `- Copy every number, percentage and amount exactly as the texts write it, and never work out new numbers. Write the words around a number in ${LANGUAGE_NAMES[lang]}.`,
     "- If one text does not cover a point, write that it does not say.",
     "- Use short sentences and everyday words.",
     // Comparing needs a little more room per bullet than explaining one text.
@@ -149,7 +150,7 @@ export function buildComparePrompt(a: string, b: string, lang: Lang, level: Leve
     `## ${h[3]}`,
     `${bullets}: which groups of people each text would affect and how. Say Text A or Text B each time.`,
     `## ${h[4]}`,
-    `${bullets}, taken from both texts as evenly as possible. Each one: the claim itself (do not start with the word "Claim"), then (Text A) or (Text B), then why a reader should check it.`,
+    `${bullets}, taken from both texts as evenly as possible. Each one (do not start with the word "Claim"): in bold, the claim in a few words close to the text's own; then (Text A) or (Text B); then one short sentence on what to check and where.`,
     `## ${h[5]}`,
     `${bullets}: fair questions a reader could ask the authors of both texts.`,
     "",

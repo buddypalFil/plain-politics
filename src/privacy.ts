@@ -18,7 +18,7 @@ export const KIND_LABEL: Record<PersonalKind, string> = {
   "ni-number": "National Insurance number",
   card: "card number",
   iban: "bank account number",
-  "self-description": "home address or birth date",
+  "self-description": "date of birth",
   address: "street address",
   "own-name": "name",
 };
@@ -30,7 +30,7 @@ const PLACEHOLDER: Record<PersonalKind, string> = {
   "ni-number": "[NI number]",
   card: "[card number]",
   iban: "[bank account]",
-  "self-description": "[address]",
+  "self-description": "[date of birth]",
   address: "[address]",
   "own-name": "[name]",
 };
@@ -58,6 +58,17 @@ const STREET =
 // Addresses everyone knows are public, not a private person's home.
 const PUBLIC_ADDRESS =
   /^(?:9|10|11|12) Downing Street$|^1600 Pennsylvania Avenue$|^1 Horse Guards Road$|^2 Marsham Street$|^(?:1|39) Victoria Street$|^100 Parliament Street$/i;
+// "10 Downing St" and "1600 Pennsylvania Ave" are the same public places.
+const longStreet = (s: string) => s.replace(/ St\.?$/i, " Street").replace(/ Ave\.?$/i, " Avenue").replace(/ Rd\.?$/i, " Road");
+// Postcodes of public buildings that appear in political texts: Parliament, Downing Street, Buckingham Palace.
+const PUBLIC_POSTCODE = /^SW1A ?[012]AA$/i;
+// A lower-case postcode ("ne1 4st") only counts after a word that says it is one, or after a street, so "the G7 5th
+// summit" or "co2 2nd" stay alone.
+const POSTCODE_CUE = new RegExp(`(?:post ?code|postal code|zip|${STREET})\\b[^\\n]{0,40}$`, "i");
+
+// Words that come before a phone number, in the app's five languages.
+const PHONE_CUE =
+  "(?:call|phone|tel|telephone|mobile|cell|ring|whatsapp|chiama\\w*|telefon\\w*|cellulare|cel|t\u00e9l\\w*|portable|appel\\w*|tel\u00e9fono|m\u00f3vil|ll\u00e1ma\\w*|llam\\w*|handy|anruf\\w*|ruf)";
 
 const MONTH = /^\d+[A-Za-z]?,? (?:January|February|March|April|May|June|July|August|September|October|November|December)\b/;
 
@@ -69,8 +80,10 @@ function looksLikeHomeAddress(m: string): boolean {
   const nums = m.match(/\d+/g) ?? [];
   const house = Number(nums[nums.length - 1]);
   if (nums[nums.length - 1]?.length === 4 && house >= 1800 && house <= 2099) return false;
-  return !PUBLIC_ADDRESS.test(street);
+  return !PUBLIC_ADDRESS.test(longStreet(street));
 }
+
+const phoneDigits = (m: string) => m.replace(/\(0\)/, "").replace(/\D/g, "");
 
 interface Rule {
   kind: PersonalKind;
@@ -91,20 +104,41 @@ const RULES: Rule[] = [
     },
   },
   { kind: "ni-number", re: /\b[A-CEGHJ-PR-TW-Z]{2} ?\d{2} ?\d{2} ?\d{2} ?[A-D]\b/gi },
-  // UK mobile/landline (07…, 01…, 02…, +44…) and international numbers written with a +.
+  // Any number written with a country code: "+44 (0)7700 900123", "+33 6 12 34 56 78", "+39 333 1234567".
   {
     kind: "phone",
-    re: /(?:\+\d{1,3}[ -]?)?\(?0?\d{2,5}\)?[ -]?\d{3,4}[ -]?\d{3,4}\b/g,
+    re: /\+\d{1,3}(?:[ .-]?\(0\))?(?:[ .-]?\(?\d{1,4}\)?){2,6}/g,
+    check: (m) => phoneDigits(m).length >= 9 && phoneDigits(m).length <= 15,
+  },
+  // UK mobile/landline (07…, 01…, 02…).
+  {
+    kind: "phone",
+    re: /(?<![\d.,])\(?0\d{2,5}\)?[ -]?\d{3,4}[ -]?\d{3,4}\b/g,
     check: (m) => {
       const d = m.replace(/\D/g, "");
-      const looksLikePhone = m.trim().startsWith("+") || /^0[1-9]/.test(d);
-      return looksLikePhone && d.length >= 10 && d.length <= 13;
+      return /^0[1-9]/.test(d) && d.length >= 10 && d.length <= 13;
     },
+  },
+  // French numbers in pairs ("06 12 34 56 78") and Italian mobiles ("333 1234567").
+  { kind: "phone", re: /\b0[1-9](?:[ .-]?\d{2}){4}\b/g },
+  { kind: "phone", re: /(?<![\d.,])\b3\d{2}[ .-]?\d{6,7}\b/g },
+  // After "call me on", "chiamami al", "llámame al", "ruf mich an unter"…: any 9-13 digits in groups.
+  {
+    kind: "phone",
+    re: new RegExp(`\\b${PHONE_CUE}\\b[^\\d\\n]{0,25}(\\(?\\d{2,4}\\)?(?:[ .-]?\\d{2,4}){2,4})`, "gi"),
+    group: 1,
+    // Not a run of years ("they call it 2019 2020 2021").
+    check: (m) => phoneDigits(m).length >= 9 && phoneDigits(m).length <= 13 && !/^(?:(?:19|20)\d{2}[ .-]?)+$/.test(m),
+  },
+  // Only phrases that point at a private person's details (politicians often say "my name is…").
+  {
+    kind: "address",
+    re: /\b(?:I live at|my (?:home )?address is)\s+(\d[^.;\n]{0,60})/gi,
+    group: 1,
   },
   {
     kind: "self-description",
-    // Only phrases that point at a private person's details (politicians often say "my name is…").
-    re: /\b(?:I live at|my (?:home )?address is|my date of birth is|I was born on)\s+(\d[^.;\n]{0,60})/gi,
+    re: /\b(?:my date of birth is|I was born on)\s+(\d[^.;\n]{0,60})/gi,
     group: 1,
   },
   // "I live on Mill Lane": a street given as where the writer lives, even without a house number.
@@ -120,9 +154,20 @@ const RULES: Rule[] = [
     check: looksLikeHomeAddress,
   },
   // A name someone gives as their own ("My name is Jordan Patel"). Every other mention of that name is removed too.
-  { kind: "own-name", re: /\b[Mm]y name is ((?:[A-Z][a-z'’-]+)(?: [A-Z][a-z'’-]+){0,2})/g, group: 1 },
-  { kind: "postcode", re: /\b[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}\b/g },
+  // In the five languages: "my name is", "mi chiamo", "je m'appelle", "me llamo", "ich heiße".
+  {
+    kind: "own-name",
+    re: /\b(?:[Mm]y name is|[Mm]i chiamo|[Ii]l mio nome è|[Jj]e m['’]appelle|[Mm]on nom est|[Mm]e llamo|[Mm]i nombre es|[Ii]ch hei(?:ß|ss)e|[Mm]ein Name ist) ((?:[A-ZÀ-Ý][a-zà-ÿ'’-]+)(?: [A-ZÀ-Ý][a-zà-ÿ'’-]+){0,2})/g,
+    group: 1,
+  },
+  { kind: "postcode", re: /\b[A-Za-z]{1,2}\d[A-Za-z\d]? ?\d[A-Za-z]{2}\b/g },
 ];
+
+// Upper-case postcodes count anywhere except public buildings; lower-case ones only after a cue (see POSTCODE_CUE).
+function postcodeOk(match: string, before: string): boolean {
+  if (PUBLIC_POSTCODE.test(match)) return false;
+  return match === match.toUpperCase() || POSTCODE_CUE.test(before);
+}
 
 export function findPersonalData(text: string): Finding[] {
   const found: Finding[] = [];
@@ -135,6 +180,7 @@ export function findPersonalData(text: string): Finding[] {
       const match = raw.trim();
       const index = (m.index ?? 0) + m[0].indexOf(match);
       if (rule.check && !rule.check(match)) continue;
+      if (rule.kind === "postcode" && !postcodeOk(match, text.slice(Math.max(0, index - 60), index))) continue;
       if (overlaps(index, index + match.length)) continue;
       taken.push([index, index + match.length]);
       found.push({ kind: rule.kind, match, index });

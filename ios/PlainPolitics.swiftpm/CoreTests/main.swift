@@ -14,7 +14,7 @@ do {
     let t = "Dear MP, my name is Jordan Patel. Write to jordan.patel@example.com or call 07700 900123. I live at 12 Mill Lane, NV1 2AB. Jordan Patel"
     let f = findPersonalData(t)
     let kinds = Set(f.map(\.kind))
-    expect(kinds.isSuperset(of: [.ownName, .email, .phone, .selfDescription]), "privacy finds name, email, phone, address", "\(f)")
+    expect(kinds.isSuperset(of: [.ownName, .email, .phone, .address]), "privacy finds name, email, phone, address", "\(f)")
     let r = redact(t, f)
     expect(!r.contains("Jordan") && !r.contains("@") && !r.contains("07700"), "redact removes all", r)
     expect(describeFindings(f).contains("email address"), "describe", describeFindings(f))
@@ -101,6 +101,28 @@ do {
 
 // Samples
 expect(samples.count == 7 && samples.filter(\.history).count == 3, "7 samples, 3 history")
+
+// Phones, postcodes and names written other ways and in other languages (same cases as tests/privacy.test.ts)
+do {
+    let k = { (t: String) in findPersonalData(t).map(\.kind) }
+    expect(k("please call me on +44 (0)7700 900123") == [.phone], "phone with (0)", "\(findPersonalData("please call me on +44 (0)7700 900123"))")
+    expect(k("Appelez-moi au 06 12 34 56 78 ou au +33 6 12 34 56 78") == [.phone, .phone], "French phones")
+    expect(k("Llámame al 612 345 678") == [.phone], "Spanish phone after a cue")
+    expect(k("Il mio numero: 333 1234567") == [.phone], "Italian mobile")
+    expect(k("Ruf mich an unter 0151 12345678") == [.phone], "German phone")
+    expect(k("3 Elm Rd, postcode ne1 4st") == [.address, .postcode], "lower-case postcode after a cue", "\(findPersonalData("3 Elm Rd, postcode ne1 4st"))")
+    expect(k("Mi chiamo Giulia Rossi e scrivo per il bus.") == [.ownName], "Italian name")
+    expect(k("Je m'appelle Claire Martin.") == [.ownName], "French name")
+    expect(k("Ich heiße Jonas Weber.") == [.ownName], "German name")
+    expect(describeFindings(findPersonalData("I was born on 3 May 1990.")) == "1 date of birth", "birth date label")
+    expect(redact("I live at 14 Mill Lane, Northvale.") == "I live at [address].", "I live at -> address", redact("I live at 14 Mill Lane, Northvale."))
+    for t in ["The Prime Minister spoke at 10 Downing St and 11 Downing St.", "A speech at 1600 Pennsylvania Ave.",
+              "Write to your MP at the House of Commons, London SW1A 0AA.", "At the G7 5th summit, co2 2nd targets were set.",
+              "They call it 2019 2020 2021: three bad years.", "Le budget est de 612 345 678 euros.",
+              "Section 12 of the Act costs £1,200 per household."] {
+        expect(findPersonalData(t).isEmpty, "public text left alone", "\(t) -> \(findPersonalData(t))")
+    }
+}
 
 print("\(passed) passed, \(failed) failed")
 exit(failed == 0 ? 0 : 1)

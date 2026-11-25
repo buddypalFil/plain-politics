@@ -30,10 +30,11 @@
       <div id="device-pill" class="pill" role="status">Checking on-device AI…</div>
     </div>
     <header class="mast">
-      <div class="ear l" aria-hidden="true"><b>Free to read</b>No sign-up. No ads.</div>
+      <div class="ear l" aria-hidden="true"><b>Private first</b>Reads on your device when it can.</div>
       <h1><svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><rect x="2" y="2" width="60" height="60" rx="14" fill="#161513"/><g fill="none" stroke="#f4f0e8" stroke-width="4.2" stroke-linecap="round"><path d="M10 17h14c7 0 8 15 14 15"/><path d="M15 27h9c5 0 7 5 12 5"/><path d="M10 37h14c5 0 7-5 12-5"/><path d="M19 47h5c7 0 8-15 14-15"/><path d="M37 32h8"/></g><circle cx="52" cy="32" r="4.4" fill="#c4562a"/></svg>Plain Politics</h1>
       <div class="ear r" aria-hidden="true"><b>Today's forecast</b>Plain, with a chance of facts.</div>
       <p class="tagline">Political text, explained in plain words.</p>
+      <p class="hybrid-line">On your device when it can · in the cloud only when it must · always says which</p>
     </header>
     <div class="edition" aria-hidden="true"><span id="edition-no">Vol. I</span><span class="ed-mid">The plain-words edition</span><span>London</span></div>
     <nav class="sections" aria-label="Kind of text">
@@ -82,8 +83,8 @@
       <div id="samples" class="samples"><button type="button" class="chip">Council housing plan</button><button type="button" class="chip">Campaign speech</button><button type="button" class="chip">Bill summary</button><button type="button" class="chip">Letter to my MP</button></div>
       <div id="photo-row" class="photo-row">
         <span class="read-label">Or read</span>
-        <button id="photo" class="link-btn" type="button">a photo of a leaflet</button>
-        <button id="video" class="link-btn" type="button">a speech video or recording</button>
+        <button id="photo" class="link-btn" type="button">a leaflet photo</button>
+        <button id="video" class="link-btn" type="button">a speech video</button>
         <button id="yt" class="link-btn" type="button">a YouTube link</button>
         <input id="photo-file" type="file" accept="image/*" hidden />
         <input id="video-file" type="file" accept="video/*,audio/*" hidden />
@@ -122,6 +123,9 @@
         <p id="choice-hint" class="choice-hint"></p>
       </div>
 
+      <button id="explain" class="primary" type="button">Explain it</button>
+      <p id="device-help" class="hint small" hidden></p>
+      <button id="setup-device" class="secondary" type="button" hidden>Set up on-device AI</button>
       <div class="options">
         <label><span>Language</span>
           <select id="lang">
@@ -149,12 +153,10 @@
         </label>
       </div>
 
-      <button id="explain" class="primary" type="button">Explain it</button>
-      <p id="device-help" class="hint small" hidden></p>
-      <button id="setup-device" class="secondary" type="button" hidden>Set up on-device AI</button>
     </section>
 
-    <article id="out-panel" class="story" aria-labelledby="out-title" aria-live="polite">
+    <article id="out-panel" class="story" aria-labelledby="out-title">
+      <p id="sr-status" class="sr-only" role="status" aria-live="polite"></p>
       <div class="dateline">
         <h2 id="out-title">The explainer</h2>
         <span>Neutral · takes no side</span>

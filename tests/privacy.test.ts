@@ -11,7 +11,7 @@ test("privacy guard finds the personal details in the letter sample", () => {
   const k = kinds(letter);
   assert.ok(k.includes("email"));
   assert.ok(k.includes("phone"));
-  assert.ok(k.includes("self-description"), "home address");
+  assert.ok(k.includes("address"), "home address");
 });
 
 test("privacy guard leaves the political samples alone (numbers, money, years)", () => {
@@ -25,7 +25,7 @@ test("privacy guard finds cards (Luhn), NI numbers, UK and international phones,
   assert.deepEqual(kinds("The budget is 1,200,000,000 pounds"), []);
   assert.deepEqual(kinds("NI: AB 12 34 56 C"), ["ni-number"]);
   assert.deepEqual(kinds("Call +44 20 7946 0000"), ["phone"]);
-  assert.deepEqual(kinds("Post to SW1A 1AA"), ["postcode"]);
+  assert.deepEqual(kinds("Post to NE1 4ST"), ["postcode"]);
   assert.deepEqual(kinds("Pay GB82 WEST 1234 5698 7654 32"), ["iban"]);
 });
 
@@ -96,4 +96,28 @@ test("privacy guard leaves public places, dates and political phrases alone", ()
   ]) {
     assert.deepEqual(findPersonalData(t), [], t);
   }
+});
+
+test("finds phones, postcodes and names written other ways and in other languages", () => {
+  assert.deepEqual(kinds("please call me on +44 (0)7700 900123"), ["phone"]);
+  assert.deepEqual(kinds("Appelez-moi au 06 12 34 56 78 ou au +33 6 12 34 56 78"), ["phone", "phone"]);
+  assert.deepEqual(kinds("Llámame al 612 345 678"), ["phone"]);
+  assert.deepEqual(kinds("Il mio numero: 333 1234567"), ["phone"]);
+  assert.deepEqual(kinds("Ruf mich an unter 0151 12345678"), ["phone"]);
+  assert.deepEqual(kinds("3 Elm Rd, postcode ne1 4st"), ["address", "postcode"]);
+  assert.deepEqual(kinds("Mi chiamo Giulia Rossi e scrivo per il bus."), ["own-name"]);
+  assert.deepEqual(kinds("Je m'appelle Claire Martin."), ["own-name"]);
+  assert.deepEqual(kinds("Ich heiße Jonas Weber."), ["own-name"]);
+  assert.equal(describeFindings(findPersonalData("I was born on 3 May 1990.")), "1 date of birth");
+  assert.equal(redact("I live at 14 Mill Lane, Northvale."), "I live at [address].");
+});
+
+test("leaves public addresses, public postcodes, years and lower-case look-alikes alone", () => {
+  assert.deepEqual(kinds("The Prime Minister spoke at 10 Downing St and 11 Downing St."), []);
+  assert.deepEqual(kinds("A speech at 1600 Pennsylvania Ave."), []);
+  assert.deepEqual(kinds("Write to your MP at the House of Commons, London SW1A 0AA."), []);
+  assert.deepEqual(kinds("At the G7 5th summit, co2 2nd targets were set."), []);
+  assert.deepEqual(kinds("They call it 2019 2020 2021: three bad years."), []);
+  assert.deepEqual(kinds("Le budget est de 612 345 678 euros."), []);
+  assert.deepEqual(kinds("Section 12 of the Act costs £1,200 per household."), []);
 });

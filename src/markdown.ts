@@ -14,7 +14,8 @@ export function escapeHtml(s: string): string {
 function inline(s: string): string {
   return escapeHtml(s)
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/(^|[\s(])_([^_\n]+?)_(?=$|[\s).,;:!?])/g, "$1<em>$2</em>")
+    // "*_note_*" (italic written twice) also counts, so no stray underscores show.
+    .replace(/(^|[\s(*])_([^_\n]+?)_(?=$|[\s).,;:!?*])/g, "$1<em>$2</em>")
     .replace(/(^|[^*\w])\*([^*\n]+?)\*(?![*\w])/g, "$1<em>$2</em>");
 }
 

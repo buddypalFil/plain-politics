@@ -57,6 +57,12 @@ test("markdown renderer escapes HTML from the model", () => {
   assert.ok(html.includes("<h3>Title</h3>"));
 });
 
+test("markdown renderer: a note in italics written twice (*_like this_*) shows no underscores", () => {
+  const html = renderMarkdown("*_From the AI's general knowledge, not from the text. Check it._*");
+  assert.ok(!html.includes("_"), html);
+  assert.match(html, /<em>/);
+});
+
 test("markdown renderer groups bullets into one list per section", () => {
   const html = renderMarkdown("## A\n- one\n- two\n## B\nplain line");
   assert.equal((html.match(/<ul>/g) || []).length, 1);
@@ -197,6 +203,9 @@ test("error messages: plain advice, and on-device advice only where it can run",
   assert.match(friendlyMessage("[429] RESOURCE_EXHAUSTED", off), /limit/);
   assert.match(friendlyMessage("[503] The model is overloaded", off), /overloaded/);
   assert.match(friendlyMessage("weird", off), /Something went wrong: weird/);
+  // A missing YouTube video comes back as a plain 403; it must not read like an App Check failure.
+  assert.match(friendlyMessage("[403] The caller does not have permission", { ...off, youtube: true }), /YouTube video couldn't be opened/);
+  assert.match(friendlyMessage("AppCheck: ReCAPTCHA error", { ...off, youtube: true }), /anti-abuse check/);
 });
 
 test("every language has every heading, and prompts use them", async () => {

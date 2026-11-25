@@ -10,7 +10,7 @@ import { buildPrompt, buildComparePrompt, HEADINGS, COMPARE_HEADINGS, LANGUAGE_N
 import { chooseRoute, type DeviceStatus, type RunChoice } from "./route.ts";
 import { renderMarkdown, firstLine, escapeHtml } from "./markdown.ts";
 import { getDeviceStatus, getImageDeviceStatus, hasPromptApi, warmUpDevice } from "./device.ts";
-import { readingAge } from "./readability.ts";
+import { readingAge, looksEnglish } from "./readability.ts";
 import { SAMPLES, COMPARE_SAMPLES } from "./samples.ts";
 import { drawFrontPage } from "./share.ts";
 import { youtubeUrl } from "./youtube.ts";
@@ -51,6 +51,8 @@ const badge = $("badge");
 const routeNote = $("route-note");
 const errorBox = $("error");
 const output = $("output");
+// One short announcement at the start and end of a run, for screen readers (the streaming text itself isn't announced).
+const srStatus = $("sr-status");
 const actions = $("actions");
 const saveBtn = $<HTMLButtonElement>("save");
 const copyBtn = $<HTMLButtonElement>("copy");
@@ -152,7 +154,9 @@ function showSpin(texts: string[]): void {
     ? [`<button type="button" data-kind="" aria-pressed="true">All <b>${total}</b></button>`,
        ...(Object.keys(SPIN_KINDS) as SpinKind[]).filter((k) => counts[k]).map((k) => `<button type="button" data-kind="${k}" aria-pressed="false" class="k-${k}">${SPIN_KINDS[k].name} <b>${counts[k]}</b></button>`)].join("")
     : "";
-  spinWhy.textContent = total ? SPIN_ALL_WHY : "No loaded words from our list in this text.";
+  spinWhy.textContent = total ? SPIN_ALL_WHY
+    : texts.some((t) => !looksEnglish(t)) ? "Spot the spin only knows English words for now, so it can't mark this text."
+    : "No loaded words from our list in this text.";
   spinClips.className = "spin-clips";
   spinClips.innerHTML = total
     ? texts.map((t, i) => `<div class="clip-wrap">${texts.length > 1 ? `<div class="tlabel">Text ${"AB"[i]} · ${found[i].length}</div>` : ""}<div class="clip">${highlightHtml(t, found[i])}</div></div>`).join("")
@@ -183,6 +187,13 @@ function addClaimButtons(lang: Lang): void {
   const card = [...output.querySelectorAll(".card")].find((c) => names.includes(c.querySelector("h3")?.textContent?.trim() ?? ""));
   if (!card) return;
   for (const li of card.querySelectorAll("li")) {
+    // "**Claim**: Check …" shows as the claim in italics, then the note on its own line, without the colon.
+    const lead = li.querySelector(":scope > strong:first-child");
+    if (lead) {
+      lead.textContent = (lead.textContent ?? "").replace(/[\s:]+$/, "");
+      const next = lead.nextSibling;
+      if (next?.nodeType === Node.TEXT_NODE) next.textContent = (next.textContent ?? "").replace(/^\s*[.:\-–—]\s*/, "");
+    }
     const b = document.createElement("button");
     b.type = "button";
     b.className = "check-claim";
@@ -233,7 +244,10 @@ output.addEventListener("click", async (e) => {
   const b = (e.target as HTMLElement).closest<HTMLButtonElement>("button.check-claim");
   if (!b || b.disabled) return;
   const li = b.closest("li")!;
-  const rawClaim = (li.firstChild ? [...li.childNodes].filter((n) => n !== b && !(n instanceof HTMLElement && n.classList.contains("claim-drawer"))).map((n) => n.textContent).join("") : "").trim();
+  // Only the claim itself (the bold part) is checked, not the note on what to check: less goes to the cloud.
+  const lead = li.querySelector(":scope > strong:first-child")?.textContent?.replace(/[:\s]+$/, "").trim() ?? "";
+  const rawClaim = lead.length >= 12 ? lead
+    : (li.firstChild ? [...li.childNodes].filter((n) => n !== b && !(n instanceof HTMLElement && n.classList.contains("claim-drawer"))).map((n) => n.textContent).join("") : "").trim();
   // If the original text had personal details, the claim gets the same details removed, and it is only
   // checked on this device, whatever "Run on" says now. (A name found once is removed everywhere.)
   const personalText = (lastResult?.findings.length ?? 0) > 0;
@@ -293,7 +307,7 @@ output.addEventListener("click", async (e) => {
 // ---------- Reading age (worked out on the device) ----------
 function showGauge(original: string, explainer: string, lang: Lang): void {
   const gauge = $("gauge");
-  const a = lang === "en" ? readingAge(original) : null;
+  const a = lang === "en" && looksEnglish(original) ? readingAge(original) : null;
   const b = lang === "en" ? readingAge(explainer) : null;
   if (!a || !b) { gauge.hidden = true; return; }
   const pos = (age: number) => `${((age - 5) / 15) * 100}%`;
@@ -324,8 +338,10 @@ speakBtn.addEventListener("click", () => {
   const text = [...output.querySelectorAll(".card")].map((c) => {
     const copy = c.cloneNode(true) as HTMLElement;
     copy.querySelectorAll(".check-claim, .claim-drawer").forEach((x) => x.remove());
-    return (copy.textContent ?? "").replace(/^\d+\s*/, "").replace(/\s+/g, " ").trim();
-  }).join(". \n");
+    // Each heading, paragraph and bullet ends with a full stop, so the voice pauses between them.
+    copy.querySelectorAll("h3, p, li, .ab").forEach((x) => x.append(". "));
+    return (copy.textContent ?? "").replace(/^\d+\s*/, "").replace(/([.!?:;])\s*\.(?=\s)/g, "$1").replace(/\s+/g, " ").trim();
+  }).join(" \n");
   const u = new SpeechSynthesisUtterance(text);
   u.lang = VOICE_LANG[(lastResult?.lang ?? langSel.value) as Lang];
   u.rate = 0.95;
@@ -422,7 +438,7 @@ function renderSamples(): void {
     box.appendChild(b);
   }
 }
-const updateCount = () => (charCount.textContent = allText().length.toLocaleString("en-GB"));
+const updateCount = () => (charCount.textContent = (input.value.length + (comparing() ? input2.value.length : 0)).toLocaleString("en-GB"));
 for (const box of [input, input2]) {
   box.addEventListener("input", () => {
     updateCount();
@@ -492,8 +508,12 @@ async function refreshDevice(): Promise<void> {
     pill.classList.add("cloud");
     deviceHelp.hidden = false;
     deviceHelp.textContent = hasPromptApi()
-      ? "On-device AI isn't available here, so the cloud is used. Either this language isn't supported on the device yet, or this computer is below Chrome's minimum (16 GB of memory or a 4 GB graphics card, plus 22 GB of free disk space)."
-      : "Want it private? Open this page in desktop Chrome (version 148 or newer) on Windows, Mac, Linux or a Chromebook Plus. On-device AI is built in, with no setup beyond a one-time download. Until then the cloud is used.";
+      ? "On-device AI can't run here (this language, or a computer below Chrome's minimum), so the cloud is used."
+      : "Want it private? In desktop Chrome (148 or newer), the built-in AI keeps your text on your computer. Until then the cloud is used.";
+    // The details, for anyone who hovers: Chrome's minimum is 16 GB of memory or a 4 GB graphics card, plus 22 GB free.
+    deviceHelp.title = hasPromptApi()
+      ? "Chrome's on-device AI needs 16 GB of memory or a graphics card with 4 GB, plus 22 GB of free disk space."
+      : "Windows, Mac, Linux or a Chromebook Plus. No setup beyond a one-time download.";
   }
 }
 langSel.addEventListener("change", async () => {
@@ -630,11 +650,23 @@ function mediaBlocked(): string | null {
 async function runMedia(src: MediaSource, label: string): Promise<void> {
   for (const b of [photoBtn, videoBtn, $<HTMLButtonElement>("yt"), $<HTMLButtonElement>("yt-go")]) b.disabled = true;
   const started = performance.now();
-  const tick = () => setPhotoStatus(`Listening to the ${label} in the cloud… ${Math.round((performance.now() - started) / 1000)} s (a 5-minute speech takes about half a minute)`);
+  let busyNote = "";
+  const tick = () => setPhotoStatus(`Listening to the ${label} in the cloud… ${Math.round((performance.now() - started) / 1000)} s ${busyNote || "(a 5-minute speech takes about half a minute)"}`);
   tick();
   const timer = setInterval(tick, 1000);
   try {
-    const text = await readMedia(src, settings.cloudModel);
+    // Like explainers: when Google's cloud is busy, wait a little and try again (3 tries in all).
+    let text = "";
+    for (let attempt = 1; ; attempt++) {
+      try {
+        text = await readMedia(src, settings.cloudModel);
+        break;
+      } catch (e) {
+        if (attempt >= 3 || !isBusyError(e) || !navigator.onLine) throw e;
+        busyNote = `(Google's cloud is busy: trying again, ${attempt + 1} of 3)`;
+        await new Promise((r) => setTimeout(r, 2000 * attempt));
+      }
+    }
     if (!text || /^NO TEXT\.?$/i.test(text)) {
       setPhotoStatus(`Nothing to read: no speech or text was found in the ${label}.`);
       return;
@@ -642,7 +674,7 @@ async function runMedia(src: MediaSource, label: string): Promise<void> {
     fillFromSource(text, `Written out in the cloud from the ${label}.`);
     ytRow.hidden = true;
   } catch (e) {
-    setPhotoStatus(`Couldn't read the ${label}: ${friendlyError(e)}`);
+    setPhotoStatus(`Couldn't read the ${label}: ${friendlyError(e, src.kind === "youtube")}`);
   } finally {
     clearInterval(timer);
     for (const b of [photoBtn, videoBtn, $<HTMLButtonElement>("yt"), $<HTMLButtonElement>("yt-go")]) b.disabled = false;
@@ -790,10 +822,13 @@ async function explainOnce(): Promise<void> {
   stopSpeaking();
   routeNote.hidden = false;
   routeNote.textContent = route.reason;
-  output.innerHTML = "";
-  output.classList.add("streaming");
   // The sections this run will produce, fixed now, so switching tab or language mid-run can't change them.
   const runSections = sectionNames();
+  // Their names show straight away as faint outlines, so the wait never looks like an empty page.
+  output.innerHTML = pendingSections("", runSections);
+  output.lang = lang; // so long words hyphenate in the right language
+  output.classList.add("streaming");
+  srStatus.textContent = compare ? "Comparing the texts…" : "Explaining the text…";
 
   const started = performance.now();
   // A live timer, so a slower on-device run never looks stuck.
@@ -840,16 +875,21 @@ async function explainOnce(): Promise<void> {
           output.innerHTML = renderMarkdown(markdown);
           final = await result.response;
         }
-        if (attempt > 1) routeNote.textContent = `${route.reason} (Google's cloud was busy; it worked on try ${attempt}.)`;
+        // After a busy spell, go back to the plain reason; the retries only matter to the console.
+        if (attempt > 1) {
+          routeNote.textContent = route.reason;
+          console.info(`Google's cloud was busy; it worked on try ${attempt}.`);
+        }
         break;
       } catch (e) {
         if (markdown.length > longestPartial.length) longestPartial = markdown;
-        if (attempt >= MAX_ATTEMPTS || !isBusyError(e)) {
+        // Offline is not "busy": trying again can't help, so say so at once.
+        if (attempt >= MAX_ATTEMPTS || !isBusyError(e) || !navigator.onLine) {
           // Show the most that ever arrived, not just what the last try managed.
           markdown = longestPartial;
           throw e;
         }
-        output.innerHTML = "";
+        output.innerHTML = pendingSections("", runSections);
         routeNote.textContent = `Google's cloud AI is busy. Trying again (${attempt + 1} of ${MAX_ATTEMPTS})…`;
         await new Promise((r) => setTimeout(r, 1500 * attempt));
       }
@@ -865,6 +905,7 @@ async function explainOnce(): Promise<void> {
     addClaimButtons(lang);
     lastResult = { markdown, source, lang, text, findings, seconds: secs };
     actions.hidden = false;
+    srStatus.textContent = `The explainer is ready. It ran ${source === "on_device" ? "on your device" : "in the cloud"}.`;
     saveBtn.disabled = false;
     saveBtn.textContent = "Save to my library";
   } catch (e) {
@@ -872,6 +913,9 @@ async function explainOnce(): Promise<void> {
     output.innerHTML = markdown ? renderMarkdown(markdown) : "";
     badge.hidden = true;
     $("route").hidden = true;
+    // The "Trying again (4 of 4)…" note would now be out of date.
+    routeNote.hidden = true;
+    srStatus.textContent = "The explainer couldn't be finished.";
     showError(friendlyError(e));
   } finally {
     clearInterval(timer);
@@ -1014,6 +1058,7 @@ async function renderLibrary(): Promise<void> {
       <div class="lib-meta">${escapeHtml(when)} · ${where} · ${item.lang.toUpperCase()}</div></div>
       <button class="lib-del" type="button" aria-label="Delete">Delete</button>`;
     li.querySelector(".link")!.addEventListener("click", () => {
+      if (running) return;
       output.innerHTML = renderMarkdown(item.markdown);
       badge.hidden = true;
       spinBox.hidden = true;
@@ -1041,8 +1086,8 @@ async function renderLibrary(): Promise<void> {
 function messageOf(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
-function friendlyError(e: unknown): string {
-  return friendlyMessage(messageOf(e), { deviceReady: deviceStatus === "available", online: navigator.onLine, dev: import.meta.env.DEV });
+function friendlyError(e: unknown, youtube = false): string {
+  return friendlyMessage(messageOf(e), { deviceReady: deviceStatus === "available", online: navigator.onLine, dev: import.meta.env.DEV, youtube });
 }
 function showError(msg: string): void {
   errorBox.hidden = false;
@@ -1135,12 +1180,26 @@ if (embedded && window.parent !== window) window.parent.postMessage({ type: "pp-
 // The library list opens the database, which starts App Check (and reCAPTCHA's cookie). So it is only loaded
 // when the reader gets near it, not on every page load.
 let libraryShown = false;
-new IntersectionObserver((entries, obs) => {
-  if (!entries.some((en) => en.isIntersecting)) return;
-  obs.disconnect();
+// The library starts just below the first screen, and a page makes small scrolls of its own while it settles after a
+// reload. So it waits until it is near AND the reader has really moved: a wheel, a swipe, a page key, or a real scroll.
+let libraryNear = false;
+let readerMoved = false;
+function maybeShowLibrary(): void {
+  if (libraryShown || !libraryNear || !(readerMoved || scrollY > 150)) return;
   libraryShown = true;
   void booted.then(renderLibrary);
+}
+new IntersectionObserver((entries) => {
+  libraryNear = entries.some((en) => en.isIntersecting);
+  maybeShowLibrary();
 }, { rootMargin: "200px" }).observe($("lib-title").closest("section")!);
+addEventListener("scroll", maybeShowLibrary, { passive: true });
+const readerMoves = () => { readerMoved = true; maybeShowLibrary(); };
+addEventListener("wheel", readerMoves, { passive: true, once: true });
+addEventListener("touchmove", readerMoves, { passive: true, once: true });
+addEventListener("keydown", (e) => {
+  if (!(e.target instanceof HTMLElement && e.target.closest("input, textarea, select")) && ["PageDown", "End", "ArrowDown", " "].includes(e.key)) readerMoves();
+});
 
 // ---------- Reading options: larger text, easy reading (kept in this browser) ----------
 function applyReading(): void {

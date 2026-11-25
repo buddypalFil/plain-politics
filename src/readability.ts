@@ -26,3 +26,13 @@ export function readingAge(text: string): ReadingAge | null {
   const age = Math.round(Math.min(20, Math.max(5, grade + 5)));
   return { age, words: words.length };
 }
+
+// Whether a text is English, judged by its small everyday words ("the", "and", "of"…), which other languages don't
+// use. The reading-age formula and Spot the spin's word list only work for English.
+const ENGLISH = new Set("the and of to is that with for this are was will have be it on by not we our you they their from".split(" "));
+export function looksEnglish(text: string): boolean {
+  const words = text.toLowerCase().match(/[a-zà-ÿ']+/g) ?? [];
+  if (words.length < 12) return true;
+  const hits = words.filter((w) => ENGLISH.has(w)).length;
+  return hits / words.length >= 0.08;
+}

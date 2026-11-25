@@ -38,10 +38,13 @@ app takes no side. (Chosen 22 Nov 2026 from six directions; it replaced "Ink & P
 
 ## Layout
 - **Top bar:** date · PRIVATE · NEUTRAL · PLAIN · on-device status, over a 1 px ink rule.
-- **Masthead:** "Plain Politics" centred, italic tagline, then a double rule (3 px + 1 px).
+- **Masthead:** "Plain Politics" centred (70 px), italic tagline, then one small-caps line saying how it runs
+  ("ON YOUR DEVICE WHEN IT CAN · IN THE CLOUD ONLY WHEN IT MUST · ALWAYS SAYS WHICH"), then a double rule.
+  Ears: "PRIVATE FIRST" and "TODAY'S FORECAST". (25 Nov 2026, after a study: the first screen must say hybrid.)
 - **Section bar:** TODAY | HISTORY tabs (selected = 2 px ink underline) and MY LIBRARY.
-- **Two columns (desktop):** left 340 px "Your text" (samples as underlined links, the text box, privacy
-  line, ballot, Language / Run on as ruled rows, EXPLAIN IT); right "The explainer".
+- **Two columns (desktop):** left 380 px "Your text" (samples as underlined links, the text box, privacy
+  line, ballot with one line per level, EXPLAIN IT, then Language / Run on / Reading as ruled rows); right "The
+  explainer". EXPLAIN IT must be on the first screen at 1440x900.
 - **The explainer as a front page:** "In one sentence" is the headline. Below it, What it says | Who it
   affects side by side; Claims worth checking across the page under a 3 px rule, one column per claim;
   Words explained | Questions to ask; History sections across. Reading age (big "14 → 9" plus the gauge)
