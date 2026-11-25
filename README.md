@@ -38,8 +38,8 @@ It works in English, Italian, French, Spanish and German, and never takes sides 
 | **Works offline** | Installable app; offline, explainers and claim checks run on the device only | Device only |
 | **Chrome extension** | Explains the article you are reading in a side panel, from the toolbar or the right-click menu | Device first, cloud if needed |
 
-Every explainer carries a stamp saying where it ran and how long it took (**RAN ON YOUR DEVICE · 15.9 S · NOTHING
-SENT** or **RAN IN THE CLOUD · 2.6 S · GOOGLE GEMINI**), and a route strip: Your text → Privacy guard → Your device or
+Every explainer carries a sticker saying where it ran and how long it took (**RAN ON YOUR DEVICE · GEMINI NANO ·
+NOTHING SENT · 15.9 S** or **RAN IN THE CLOUD · GOOGLE GEMINI · FIREBASE AI LOGIC · 2.6 S**), and a route strip: Your text → Privacy guard → Your device or
 Cloud.
 
 ## Why hybrid AI fits this app

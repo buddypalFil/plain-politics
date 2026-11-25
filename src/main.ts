@@ -18,6 +18,7 @@ import { friendlyMessage } from "./errors.ts";
 import { withStallLimit } from "./stream.ts";
 import { findSpin, countByKind, highlightHtml, SPIN_KINDS, type SpinKind } from "./spin.ts";
 import { findPersonalData, describeFindings, redact, redactKnown, type Finding } from "./privacy.ts";
+import { sectionHints } from "./hints.ts";
 import {
   isConfigured,
   loadSettings,
@@ -185,9 +186,48 @@ function addClaimButtons(lang: Lang): void {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "check-claim";
-    b.textContent = "Check this claim";
+    b.innerHTML = `${MAGNIFIER}<span>Check this claim</span>`;
     li.appendChild(b);
   }
+}
+const MAGNIFIER = `<svg class="mag" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.6" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M12.8 12.8l4.6 4.6" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>`;
+
+// A Google Search check starts with one verdict in bold (see checkClaim). Turn it into a stamped badge.
+type Verdict = { kind: "yes" | "no" | "mixed" | "unknown"; word: string; rest: string };
+function readVerdict(text: string): Verdict | null {
+  const m = text.match(/^\s*\*\*([^*\n]{2,60}?)\*\*\s*[:.\-–—]?\s*/);
+  if (!m) return null;
+  const word = m[1].replace(/[\s:.]+$/, "");
+  const w = word.toLowerCase();
+  const kind: Verdict["kind"] =
+    /not enough|insufficien|pas assez|insuffisant|no hay suficiente|nicht genug|unzureichend/.test(w) ? "unknown"
+    : /^(?:not|non|pas|no|nicht)\b/.test(w) ? "unknown"
+    : /mixed|mist|mitig|mixte|mixta|gemischt|teilweise/.test(w) ? "mixed"
+    : /disputed|contest|discut|cuestion|refut|umstritten|bestritten/.test(w) ? "no"
+    : /support|confirm|fondat|étay|soutenu|respald|bestätigt|gestützt|belegt/.test(w) ? "yes"
+    : "unknown";
+  return { kind, word, rest: text.slice(m[0].length) };
+}
+// The private answer ("**Kind of claim:** a promise." then "**How to check it:**" and bullets, in any language):
+// the kind becomes a tag, the bold label a small heading, and the bullets numbered steps.
+function shapeHowToCheck(drawer: HTMLElement): void {
+  for (const p of drawer.querySelectorAll<HTMLParagraphElement>(":scope > p:not([class])")) {
+    const s = p.firstElementChild;
+    if (!s || s.tagName !== "STRONG" || p.firstChild !== s) continue;
+    const label = (s.textContent ?? "").replace(/\s*[:：]\s*$/, "");
+    const value = (p.textContent ?? "").slice((s.textContent ?? "").length).replace(/^\s*[:：]?\s*/, "").trim();
+    if (value) {
+      p.outerHTML = `<div class="claim-kind"><span class="ck-label">${escapeHtml(label)}</span><span class="ck-value">${escapeHtml(value.replace(/\.$/, ""))}</span></div>`;
+    } else {
+      const next = p.nextElementSibling;
+      if (next?.tagName === "UL") next.classList.add("claim-steps");
+      p.outerHTML = `<div class="ck-label">${escapeHtml(label)}</div>`;
+    }
+  }
+}
+const VERDICT_MARK: Record<Verdict["kind"], string> = { yes: "✓", no: "✕", mixed: "~", unknown: "?" };
+function verdictHtml(v: Verdict): string {
+  return `<div class="verdict v-${v.kind}"><span class="v-mark" aria-hidden="true">${VERDICT_MARK[v.kind]}</span><span class="v-word">${escapeHtml(v.word)}</span></div><span class="v-by">Checked with Google Search</span>`;
 }
 output.addEventListener("click", async (e) => {
   const b = (e.target as HTMLElement).closest<HTMLButtonElement>("button.check-claim");
@@ -214,9 +254,10 @@ output.addEventListener("click", async (e) => {
     return;
   }
   b.disabled = true;
-  drawer.innerHTML = settings.claimGrounding
+  b.querySelector("span")!.textContent = "Checking…";
+  drawer.innerHTML = `<span class="claim-loading" aria-hidden="true"></span>${settings.claimGrounding
     ? `<p class="claim-note">Checking with Google Search… Only this sentence is sent to the cloud.</p>`
-    : `<p class="claim-note">Working out how to check it${deviceStatus === "available" ? ", on your device" : ""}…</p>`;
+    : `<p class="claim-note">Working out how to check it${deviceStatus === "available" ? ", on your device" : ""}…</p>`}`;
   try {
     // Respect "Run on": "This device only" never falls back to the cloud.
     // Offline, only the device can answer, so it is treated like "This device only".
@@ -229,19 +270,23 @@ output.addEventListener("click", async (e) => {
     const q = encodeURIComponent(claim.slice(0, 300));
     const links = r.grounded
       ? ""
-      : `<p class="claim-links">Search it yourself: <a href="https://toolbox.google.com/factcheck/explorer/search/${q}" target="_blank" rel="noopener noreferrer">Google Fact Check Explorer</a> · <a href="https://www.google.com/search?q=${q}" target="_blank" rel="noopener noreferrer">Google Search</a></p>`;
+      : `<div class="ck-label">Search it yourself</div><div class="claim-links"><a class="claim-go" href="https://toolbox.google.com/factcheck/explorer/search/${q}" target="_blank" rel="noopener noreferrer">${MAGNIFIER}Google Fact Check Explorer</a><a class="claim-go" href="https://www.google.com/search?q=${q}" target="_blank" rel="noopener noreferrer">${MAGNIFIER}Google Search</a></div>`;
     const where = r.grounded
       ? "Only this sentence was sent to the cloud. Check the sources yourself."
       : r.ranOn === "on_device"
         ? "This ran on your device; nothing was sent. The links only open if you click them."
         : "Only this sentence was sent to the cloud. The links only open if you click them.";
-    drawer.innerHTML = `${renderMarkdown(r.text)}${list}${links}<p class="claim-note">${where}</p><div class="claim-suggest"></div>`;
+    const verdict = r.grounded ? readVerdict(r.text) : null;
+    const body = verdict ? `<div class="verdict-row">${verdictHtml(verdict)}</div>${renderMarkdown(verdict.rest)}` : renderMarkdown(r.text);
+    drawer.innerHTML = `${body}${list}${links}<p class="claim-note">${where}</p><div class="claim-suggest"></div>`;
+    if (!verdict) shapeHowToCheck(drawer);
     if (r.suggestionsHtml) drawer.querySelector(".claim-suggest")!.attachShadow({ mode: "open" }).innerHTML = r.suggestionsHtml;
     b.textContent = "Checked";
     b.classList.add("done");
   } catch (err) {
     drawer.innerHTML = `<p class="claim-note">Couldn't check this claim: ${escapeHtml(friendlyError(err))}</p>`;
     b.disabled = false;
+    b.querySelector("span")!.textContent = "Check this claim";
   }
 });
 
@@ -317,7 +362,10 @@ function renderChoices(): void {
   updatePrivacy();
   // The outline only exists before the first result (a result replaces it), so it may be gone.
   const ghost = document.getElementById("ghost");
-  if (ghost) ghost.innerHTML = sectionNames().map((h) => `<li>${escapeHtml(h)}</li>`).join("");
+  if (ghost) {
+    const hints = sectionHints(langSel.value as Lang, mode === "history", comparing());
+    ghost.innerHTML = sectionNames().map((h, i) => `<li>${escapeHtml(h)}${hints[i] ? `<span class="gd">${escapeHtml(hints[i])}</span>` : ""}</li>`).join("");
+  }
   renderSamples();
 }
 $("mode-seg").addEventListener("click", (e) => {
@@ -393,7 +441,7 @@ function updatePrivacy(): void {
       ? "Privacy guard is on: personal details never go to the cloud."
       : deviceStatus === "available"
         ? `Found ${describeFindings(found)}. This text will only run on your device.`
-        : `Found ${describeFindings(found)}. These never go to the cloud, and on-device AI isn't ready in this browser, so remove them to explain this text.`;
+        : `Found ${describeFindings(found)}. Personal details never go to the cloud, so remove them first.`;
 }
 // Both boxes are checked together, so a name given in Text A is also removed from Text B.
 function redactBoxes(): void {
@@ -849,11 +897,14 @@ function isBusyError(e: unknown): boolean {
 
 function showBadge(source: "on_device" | "in_cloud", secs: string): void {
   badge.hidden = false;
-  badge.className = `stamp ${source === "on_device" ? "device" : "cloud"}`;
+  // Once it's done, the stamp becomes a sticker that slaps onto the page and says which AI wrote it.
+  badge.className = `stamp sticker ${source === "on_device" ? "device" : "cloud"}`;
   badge.innerHTML = source === "on_device"
-    ? `Ran on your device<small>${secs} s · nothing sent</small>`
-    : `Ran in the cloud<small>${secs} s · Google Gemini</small>`;
+    ? `${SPARK}<span class="st-text"><b>Ran on your device</b><small>Gemini&nbsp;Nano · nothing&nbsp;sent · ${secs}&nbsp;s</small></span>`
+    : `${SPARK}<span class="st-text"><b>Ran in the cloud</b><small>Google&nbsp;Gemini · Firebase&nbsp;AI&nbsp;Logic · ${secs}&nbsp;s</small></span>`;
 }
+// A four-point spark in blue to violet, a nod to Gemini.
+const SPARK = `<svg class="spark" viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="spark-g" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#3f7ff0"/><stop offset=".55" stop-color="#9b72cb"/><stop offset="1" stop-color="#d96570"/></linearGradient></defs><path fill="url(#spark-g)" d="M12 1c.7 5.8 4.6 10.2 11 11-6.4.8-10.3 5.2-11 11-.7-5.8-4.6-10.2-11-11 6.4-.8 10.3-5.2 11-11Z"/></svg>`;
 
 // ---------- Save, copy, library ----------
 saveBtn.addEventListener("click", async () => {

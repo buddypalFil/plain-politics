@@ -176,7 +176,22 @@ button.secondary:hover { background: var(--accent-soft); }
 .stamp.cloud small { color: var(--cloud); }
 .stamp { animation: thud .42s cubic-bezier(.2, .9, .3, 1.25) both; }
 @keyframes thud { 0% { opacity: 0; transform: rotate(-9deg) scale(1.9); } 65% { opacity: 1; transform: rotate(-1deg) scale(.95); } 100% { transform: rotate(-1.5deg) scale(1); } }
-.stamp.running { animation: pulse 1.6s ease-in-out infinite; }
+.stamp.running { border-style: dashed; animation: pulse 1.6s ease-in-out infinite; }
+/* Done: a die-cut sticker (white edge, soft shadow) slaps onto the page, then a shine runs across it.
+   It keeps its own paper colours in dark mode too, like a real sticker. */
+.stamp.sticker { position: relative; overflow: hidden; align-items: center; flex-wrap: nowrap; gap: 11px; margin-bottom: 10px; padding: 9px 16px 9px 11px;
+  border: 3px solid #fff; border-radius: 14px; background: #fffdf8; color: #111;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .1), 0 8px 18px -8px rgba(0, 0, 0, .45), 0 2px 4px rgba(0, 0, 0, .12);
+  transform: rotate(-2.5deg); animation: slap .55s cubic-bezier(.2, .9, .3, 1.35) both; }
+.stamp.sticker.cloud { color: #2f3a4a; }
+.stamp.sticker .spark { flex: none; width: 30px; height: 30px; animation: twinkle .9s .35s ease-out both; }
+.stamp.sticker .st-text { display: flex; flex-direction: column; gap: 3px; }
+.stamp.sticker b { font-size: 16px; font-weight: 800; letter-spacing: .06em; line-height: 1.1; }
+.stamp.sticker small { font-size: 10.5px; font-weight: 700; letter-spacing: .1em; line-height: 1.2; color: #5a554e; }
+.stamp.sticker::after { content: ""; position: absolute; inset: -40% -60%; background: linear-gradient(105deg, transparent 42%, rgba(255, 255, 255, .9) 50%, transparent 58%); transform: translateX(-70%); animation: shine .9s .5s ease-out forwards; pointer-events: none; }
+@keyframes slap { 0% { opacity: 0; transform: rotate(-14deg) scale(1.7) translateY(-14px); } 55% { opacity: 1; transform: rotate(-1deg) scale(.94); } 78% { transform: rotate(-3deg) scale(1.03); } 100% { transform: rotate(-2.5deg) scale(1); } }
+@keyframes shine { to { transform: translateX(70%); } }
+@keyframes twinkle { 0% { transform: scale(.3) rotate(-90deg); } 70% { transform: scale(1.18) rotate(8deg); } 100% { transform: scale(1) rotate(0); } }
 @keyframes pulse { 50% { opacity: .55; } }
 
 /* Route strip */
@@ -228,20 +243,37 @@ button.secondary:hover { background: var(--accent-soft); }
 .output .card:nth-child(3) li { padding: 4px 18px 10px; border-left: 1px solid var(--line); }
 .output .card:nth-child(3) li::before { display: none; }
 .output .card:nth-child(3) li > strong:first-child { display: block; font-style: italic; font-size: 17.5px; line-height: 1.3; margin-bottom: 4px; }
-.output .card:nth-child(3) li:has(> .check-claim):not(:has(.claim-drawer)) { padding-bottom: 40px; }
+.output .card:nth-child(3) li:has(> .check-claim):not(:has(.claim-drawer)) { padding-bottom: 54px; }
 .output .card:nth-child(3) li:not(:has(.claim-drawer)) > .check-claim { position: absolute; bottom: 10px; }
 .output .card:nth-child(3) li:has(.claim-drawer) { grid-column: 1 / -1; }
 /* Compare: each difference shows Text A and Text B on their own lines */
 .output .ab { display: flex; gap: 8px; margin-top: 5px; }
 .output .ab b { flex: none; display: grid; place-items: center; width: 18px; height: 18px; margin-top: .2em; background: var(--ink); color: var(--bg); font: 800 10px/1 var(--sans); }
 .compare-on .output .card:nth-child(1) p { font-size: 34px; line-height: 1.14; }
-.check-claim { display: flex; width: fit-content; align-items: center; gap: 10px; margin-top: 8px; padding: 0; border: 0; background: none; cursor: pointer; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--warn); text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 4px; }
-.check-claim::after { content: ""; flex: none; width: 20px; height: 20px; border: 2px solid currentColor; }
-.check-claim:hover::after { background-color: var(--warn-soft); }
-.check-claim:disabled { color: var(--muted); cursor: progress; text-decoration: none; }
-.check-claim.done { color: var(--ink-2); cursor: default; }
-.check-claim.done::after { background: var(--x); background-position: center; background-size: 100% 100%; background-repeat: no-repeat; animation: mark .22s ease-out; }
-.claim-drawer { margin: 10px 0 4px; padding: 10px 14px; background: var(--panel); border-left: 3px solid var(--warn); }
+/* Check this claim: a rust button with a magnifier; once checked it turns into a marked ballot box */
+.check-claim { display: flex; width: fit-content; align-items: center; gap: 7px; margin-top: 10px; padding: 6px 11px 6px 8px; border: 1.5px solid var(--warn); background: none; cursor: pointer; font-size: 11.5px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--warn); transition: background-color .15s ease, color .15s ease, transform .1s ease; }
+.check-claim .mag { flex: none; width: 15px; height: 15px; transition: transform .2s ease; }
+.check-claim:hover:not(:disabled) { background: var(--warn); color: var(--panel); }
+.check-claim:hover:not(:disabled) .mag { transform: scale(1.15) rotate(-12deg); }
+.check-claim:active:not(:disabled) { transform: translateY(1px); }
+.check-claim:disabled { border-style: dashed; cursor: progress; }
+.check-claim:disabled .mag { animation: search 1s ease-in-out infinite; }
+@keyframes search { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(3px, -2px); } 50% { transform: translate(0, -4px); } 75% { transform: translate(-3px, -2px); } }
+.check-claim.done { gap: 10px; padding: 0; border: 0; color: var(--ink-2); cursor: default; }
+.check-claim.done::after { content: ""; flex: none; width: 20px; height: 20px; border: 2px solid currentColor; background: var(--x); background-position: center; background-size: 100% 100%; background-repeat: no-repeat; animation: mark .22s ease-out; }
+.claim-drawer { margin: 12px 0 4px; padding: 14px 16px 12px; background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--warn); animation: drawer .25s ease-out both; }
+@keyframes drawer { from { opacity: 0; transform: translateY(-6px); } }
+/* While it checks: a rust line sweeps across the top of the drawer */
+.claim-loading { display: block; height: 3px; margin: -2px 0 8px; background: linear-gradient(90deg, transparent, var(--warn), transparent) no-repeat; background-size: 40% 100%; animation: sweep 1.1s linear infinite; }
+@keyframes sweep { from { background-position: -60% 0; } to { background-position: 160% 0; } }
+/* The verdict from Google Search, stamped like a ballot mark */
+.verdict-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; margin: 0 0 10px; }
+.verdict { --vc: var(--muted); display: inline-flex; align-items: center; gap: 9px; padding: 4px 13px 4px 4px; border: 2px solid var(--vc); color: var(--vc); transform: rotate(-1.5deg); font: 800 14px/1 var(--sans); letter-spacing: .1em; text-transform: uppercase; animation: thud .42s cubic-bezier(.2, .9, .3, 1.25) both; }
+.verdict .v-mark { display: grid; place-items: center; width: 24px; height: 24px; background: var(--vc); color: var(--panel); font: 800 15px/1 var(--sans); letter-spacing: 0; }
+.verdict.v-yes { --vc: var(--ink); }
+.verdict.v-no { --vc: var(--warn); }
+.verdict.v-mixed { --vc: var(--warn); border-style: dashed; }
+.v-by { font: 700 10.5px/1.2 var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 .claim-drawer .card { padding: 0 !important; border: 0 !important; margin: 0 !important; }
 .claim-drawer p, .claim-drawer li { font-size: 15px !important; }
 .claim-drawer p { margin: 2px 0; }
@@ -250,9 +282,25 @@ button.secondary:hover { background: var(--accent-soft); }
 .claim-drawer li::before { display: block !important; width: 5px; height: 5px; }
 .claim-drawer li strong { display: inline !important; font-style: normal !important; font-size: inherit !important; }
 .claim-note { color: var(--muted) !important; font: 500 12.5px/1.4 var(--sans) !important; margin-top: 8px !important; }
-.claim-sources { margin: 6px 0 0; padding-left: 18px; font-size: 14px; }
-.claim-sources a, .claim-links a { color: var(--ink-2); }
-.claim-links { font: 500 13px/1.4 var(--sans) !important; margin-top: 8px !important; }
+.claim-sources { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; padding: 0; list-style: none; counter-reset: src; }
+.claim-drawer .claim-sources li { padding: 0 !important; }
+.claim-drawer .claim-sources li::before { display: none !important; }
+.claim-sources a { display: inline-flex; align-items: center; gap: 6px; max-width: 280px; padding: 4px 9px; border: 1px solid var(--line); background: var(--bg); font: 600 12.5px/1.3 var(--sans); color: var(--ink-2); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: border-color .15s ease; }
+.claim-sources a::before { counter-increment: src; content: counter(src); font-weight: 800; color: var(--warn); }
+.claim-sources a:hover { border-color: var(--ink); color: var(--ink); }
+/* The private "how to check it" answer: a tag for the kind of claim, numbered steps, two search buttons */
+.claim-kind { display: inline-flex; align-items: stretch; max-width: 100%; margin: 0 0 12px; border: 2px solid var(--ink); background: var(--bg); transform: rotate(-1deg); animation: thud .42s cubic-bezier(.2, .9, .3, 1.25) both; }
+.claim-kind .ck-label { display: flex; align-items: center; margin: 0; padding: 5px 9px; background: var(--ink); color: var(--panel); }
+.claim-kind .ck-value { padding: 5px 11px; font: 700 14.5px/1.3 var(--sans); color: var(--ink); }
+.ck-label { font: 800 10.5px/1.2 var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.claim-drawer > .ck-label { margin: 6px 0 8px; }
+.claim-drawer .claim-steps { counter-reset: step; margin: 0 0 6px; }
+.claim-drawer .claim-steps li { padding: 0 0 9px 32px !important; counter-increment: step; }
+.claim-drawer .claim-steps li::before { content: counter(step) !important; display: grid !important; place-items: center; top: .05em !important; width: 21px !important; height: 21px !important; border-radius: 50%; background: var(--warn) !important; color: var(--panel); font: 800 11.5px/1 var(--sans); }
+.claim-links { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 4px; }
+.claim-go { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px 6px 9px; border: 1.5px solid var(--ink); background: var(--bg); color: var(--ink); text-decoration: none; font: 700 12.5px/1.2 var(--sans); transition: background-color .15s ease, color .15s ease; }
+.claim-go .mag { flex: none; width: 14px; height: 14px; }
+.claim-go:hover { background: var(--ink); color: var(--bg); }
 .claim-suggest { margin-top: 6px; }
 
 /* Empty: what will appear */
@@ -262,16 +310,20 @@ button.secondary:hover { background: var(--accent-soft); }
 .ghost li { padding: 10px 0; border-top: 1px dashed var(--line); font-size: 12px; font-weight: 800; line-height: 1; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
 .ghost li::before { display: none; }
 .ghost li:first-child { border-top: 0; padding-top: 0; font: italic 700 26px/1.15 var(--serif); letter-spacing: 0; text-transform: none; color: var(--ink-2); }
-/* Before the first run, the ghost is laid out like the front page it becomes, with faint lines for text */
+/* Before the first run, the ghost is laid out like the front page it becomes, with one line under each
+   section name saying what it will hold */
 .empty .ghost { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 32px; }
-.empty .ghost li { border-top: 1px solid var(--line); padding: 12px 0 18px; }
-.empty .ghost li::after { content: ""; display: block; height: 46px; margin-top: 12px; background: repeating-linear-gradient(to bottom, var(--accent-soft) 0 7px, transparent 7px 16px); }
-.empty .ghost li:nth-child(1) { grid-column: 1 / -1; border-top: 0; padding: 0 0 6px; }
-.empty .ghost li:nth-child(1)::after { height: 72px; width: 82%; background: repeating-linear-gradient(to bottom, var(--accent-soft) 0 26px, transparent 26px 36px); }
+.empty .ghost li { border-top: 1px solid var(--line); padding: 12px 0 18px; animation: rise .5s ease-out both; }
+.ghost .gd { display: block; margin-top: 7px; font: italic 400 15.5px/1.4 var(--serif); letter-spacing: 0; text-transform: none; color: var(--muted); }
+.empty .ghost li:nth-child(1) { grid-column: 1 / -1; border-top: 0; padding: 0 0 10px; }
+.empty .ghost li:nth-child(1) .gd { margin-top: 8px; font-size: 18px; font-weight: 400; }
+.empty .ghost li:nth-child(2) { animation-delay: .06s; } .empty .ghost li:nth-child(4) { animation-delay: .12s; }
+.empty .ghost li:nth-child(3) { animation-delay: .18s; } .empty .ghost li:nth-child(5) { animation-delay: .24s; }
+.empty .ghost li:nth-child(6) { animation-delay: .3s; } .empty .ghost li:nth-child(n+7) { animation-delay: .36s; }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } }
 .empty .ghost li:nth-child(2) { grid-column: 1; grid-row: 2; }
 .empty .ghost li:nth-child(4) { grid-column: 2; grid-row: 2; }
 .empty .ghost li:nth-child(3) { grid-column: 1 / -1; grid-row: 3; border-top: 3px solid var(--line); }
-.empty .ghost li:nth-child(3)::after { background: linear-gradient(to right, var(--accent-soft) 0 calc(100% - 18px), transparent 0) 0 0 / calc((100% + 18px) / 3) 100% repeat-x; -webkit-mask: repeating-linear-gradient(to bottom, #000 0 7px, transparent 7px 16px); mask: repeating-linear-gradient(to bottom, #000 0 7px, transparent 7px 16px); }
 .empty .ghost li:nth-child(5) { grid-column: 1; grid-row: 4; }
 .empty .ghost li:nth-child(6) { grid-column: 2; grid-row: 4; }
 .output .ghost.pending { opacity: .7; margin-top: 10px; }
@@ -287,6 +339,9 @@ button.secondary:hover { background: var(--accent-soft); }
 .spin-kinds button b { font-weight: 800; margin-left: 3px; }
 .spin-kinds button:hover { background: var(--accent-soft); }
 .spin-kinds button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.spin-def { margin: 8px 0 0; max-width: 62ch; font: 400 15.5px/1.5 var(--serif); color: var(--ink-2); }
+.spin-def b { font-weight: 700; color: var(--ink); }
+.spin-def i { background: var(--warn-soft); border-bottom: 2px solid var(--warn); font-style: normal; color: var(--ink); }
 .spin-why { margin: 10px 0 0; font: italic 400 15px/1.45 var(--serif); color: var(--ink-2); }
 .spin-clips { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 12px; }
 .spin-clips .tlabel { margin-bottom: 6px; }
@@ -401,8 +456,6 @@ button.secondary:hover { background: var(--accent-soft); }
   textarea { min-height: 170px; height: 190px; }
   .empty .ghost { grid-template-columns: 1fr; }
   .empty .ghost li:nth-child(n) { grid-column: 1; grid-row: auto; }
-  .empty .ghost li::after { height: 30px; }
-  .empty .ghost li:nth-child(3)::after { background: repeating-linear-gradient(to bottom, var(--accent-soft) 0 7px, transparent 7px 16px); -webkit-mask: none; mask: none; }
   .output { grid-template-columns: 1fr; }
   .output .card:nth-child(n) { grid-column: 1; grid-row: auto; }
   .output .ghost.pending, .output > p, .output.streaming::after { grid-row: auto; }
@@ -411,6 +464,7 @@ button.secondary:hover { background: var(--accent-soft); }
   .output .card:nth-child(3) li { border-left: 0; padding-left: 0; }
   .output .card:nth-child(3) li + li { border-top: 1px solid var(--line); padding-top: 10px; }
   .ghost li:first-child { font-size: 22px; }
+  .stamp.sticker small { font-size: 9.5px; letter-spacing: .06em; }
   .g-cap { font-size: 36px; }
 }
 
@@ -442,7 +496,8 @@ button.secondary:hover { background: var(--accent-soft); }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .stamp, .stamp.running, .route .n.active i, .output.streaming::after, .mast h1, #level-seg .xb, .check-claim::after { animation: none !important; }
+  .stamp, .stamp.running, .stamp .spark, .stamp::after, .route .n.active i, .output.streaming::after, .mast h1, #level-seg .xb, .check-claim::after, .check-claim .mag,
+  .verdict, .claim-kind, .claim-drawer, .claim-loading, .empty .ghost li { animation: none !important; }
   button.primary { transition: none; }
 }
 
@@ -469,7 +524,9 @@ button.secondary:hover { background: var(--accent-soft); }
   .output li, .output p { font-size: 10.5pt; }
   .output .card:nth-child(3) li { padding-bottom: 8px !important; }
   .ear { padding: 5px 8px; }
-  .stamp, mark, .output li::before, .ab b { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .stamp, mark, .output li::before, .ab b, .verdict, .v-mark { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .stamp.sticker { box-shadow: none; border-color: #cfc8ba; }
+  .stamp.sticker::after { display: none; }
   .clip { max-height: none; overflow: visible; border: 0; padding: 0; background: none; font-size: 10pt; }
   .spin, .out-foot { break-inside: avoid; }
   .foot { margin-top: 14px; padding: 0; }

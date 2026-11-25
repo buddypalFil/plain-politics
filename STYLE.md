@@ -52,14 +52,22 @@ app takes no side. (Chosen 22 Nov 2026 from six directions; it replaced "Ink & P
 ## Components
 - **Ballot:** 2 px ink box, "HOW MUCH DETAIL · MARK ONE", one row per level with a 28 px square; the
   chosen level is marked with an X.
-- **Stamp:** 2.5 px border, rotated -1.5°, "RAN ON YOUR DEVICE · 15.9 S · NOTHING SENT" (ink) or
-  "RAN IN THE CLOUD · 2.6 S · GOOGLE GEMINI" (slate). While running: "WORKING ON YOUR DEVICE · 3 S".
+- **Stamp, then sticker:** while running, a dashed 2.5 px stamp, "WORKING ON YOUR DEVICE · 3 S". When done
+  it becomes a die-cut sticker that slaps onto the page (white edge, 14 px corners, soft shadow, rotated -2.5°,
+  a shine runs across): a four-point spark in blue to violet (a nod to Gemini), then "RAN ON YOUR DEVICE /
+  GEMINI NANO · NOTHING SENT · 15.9 S" (ink) or "RAN IN THE CLOUD / GOOGLE GEMINI · FIREBASE AI LOGIC · 2.6 S"
+  (slate). The sticker keeps its paper colours in dark mode, like a real one. (25 Nov 2026, from tester feedback.)
 - **Route strip:** Your text — Privacy guard — Your device — Cloud; used steps filled ink, others struck through.
-- **Check this claim:** rust small-caps link with an empty box; once checked the box gets an X. The drawer
-  has a 3 px rust left rule and always says what was sent.
+- **Check this claim:** a rust outline button with a magnifier ("CHECKING…" while it works); once checked
+  it becomes "CHECKED" with a marked box. The drawer (slip colour, 4 px rust left rule) shows a sweeping rust
+  line while it checks, then the kind of claim as a stamped tag, "HOW TO CHECK IT" as numbered rust steps, and
+  two outline search buttons. With Google Search grounding on, a stamped verdict (Supported ✓ ink, Disputed ✕
+  rust, Mixed ~ dashed rust, Not enough information ? muted). It always says what was sent.
+- **Empty explainer:** the section names laid out like the front page, each with one italic line saying what
+  it will hold (no grey placeholder bars).
 - **Buttons:** primary = solid ink, square corners, small caps. Secondary = 1.5 px ink outline. Actions =
   underlined small caps.
-- **Corners:** square everywhere. No shadows.
+- **Corners:** square everywhere. No shadows. The one exception is the sticker.
 
 ## Icon
 "Full stop": an ink rounded square; four paper lines of uneven length curve into one line ending in a rust
