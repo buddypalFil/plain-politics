@@ -368,8 +368,12 @@ function renderChoices(): void {
   if (lede) {
     lede.innerHTML = comparing()
       ? "Paste two texts and press <b>Compare them</b>. Your comparison appears here, in plain words:"
-      : "Paste a text and press <b>Explain it</b>. Your explainer appears here, in plain words:";
+      : mode === "history"
+        ? "Paste a text and press <b>Explain it</b>. Your explainer appears here, in plain words:"
+        : "Paste a text and press <b>Explain it</b>. You get a front page like this example, made from the Council housing sample:";
   }
+  // The example front page shows on the Today tab only (see index.html and style.css).
+  document.body.dataset.mode = mode;
   document.body.classList.toggle("compare-on", comparing());
   input.placeholder = comparing() ? "Paste the first text here…" : "Paste the text here…";
   if (!explainBtn.disabled) explainBtn.textContent = explainLabel();

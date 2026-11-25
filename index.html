@@ -22,7 +22,7 @@
   <meta property="og:image:alt" content="Plain Politics masthead: political text, explained in plain words." />
   <meta name="twitter:card" content="summary_large_image" />
 </head>
-<body>
+<body data-mode="today">
   <div class="wrap">
     <div class="topbar">
       <span id="today" class="today"></span>
@@ -173,7 +173,18 @@
       <button id="redact-send" class="secondary" type="button" hidden>Remove personal details and continue</button>
       <div id="output" class="output">
         <div class="empty">
-          <p class="empty-lede">Paste a text and press <b>Explain it</b>. Your explainer appears here, in plain words:</p>
+          <p class="empty-lede">Paste a text and press <b>Explain it</b>. You get a front page like this example, made from the Council housing sample:</p>
+          <!-- A real explainer of the made-up Council housing sample (checked against the text), so the first screen
+               shows what the app makes. Today tab only; History and Compare show their section names instead. -->
+          <div class="stamp example-stamp">Example front page</div>
+          <div id="example" class="output example" aria-label="Example explainer">
+            <section class="card"><h3>In one sentence</h3><p>Brookfield will build 1,200 new homes by the river, but people disagree on whether it is a good idea.</p></section>
+            <section class="card"><h3>What it says</h3><ul><li>The Council approved the &quot;Homes for Brookfield&quot; plan: 1,200 new homes on former industrial land over five years.</li><li>At least 35% will be &quot;affordable housing&quot;.</li><li>A £40 million loan and the sale of two council car parks will pay for it.</li><li>Buildings of up to eight storeys will be allowed by the river, up from four.</li></ul></section>
+            <section class="card"><h3>Claims worth checking</h3><ul><li><strong>1,200 homes in five years</strong>Check the council&#39;s published plan and budget for the building timetable.</li><li><strong>The riverside land is at risk of flooding</strong>Opposition councillors say this. Check the official flood maps for the area.</li></ul></section>
+            <section class="card"><h3>Who it affects</h3><ul><li>Young families: the Council Leader says they will be able to stay in the town.</li><li>Local shops: opposition councillors say selling the car parks will hurt them.</li><li>People near the river, who may see buildings up to eight storeys tall.</li></ul></section>
+            <section class="card"><h3>Words explained</h3><ul><li><strong>Affordable housing</strong>: rent set at no more than 80% of local market rent.</li><li><strong>Public Works Loan Board</strong>: where the £40 million loan comes from.</li></ul></section>
+            <section class="card"><h3>Questions to ask</h3><ul><li>Which two car parks will be sold?</li><li>What will be done about the flood risk?</li><li>How can people take part in the consultation before March?</li></ul></section>
+          </div>
           <ol id="ghost" class="ghost">
             <li>In one sentence<span class="gd">The whole text in one line anyone can follow.</span></li>
             <li>What it says<span class="gd">The main points, in plain words.</span></li>
