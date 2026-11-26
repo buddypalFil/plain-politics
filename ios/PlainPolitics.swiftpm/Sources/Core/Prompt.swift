@@ -119,7 +119,7 @@ func buildPrompt(_ text: String, lang: Lang, level: Level = .balanced, mode: Mod
         history
             ? "- Use only what is in the text, except in the \"\(lang.contextHeading)\" section. Never add facts, numbers or names that are not in it."
             : "- Use only what is in the text. Never add facts, numbers or names that are not in it.",
-        "- Copy every number, percentage and amount exactly as the text writes it, and never work out new numbers. Write the words around a number in \(lang.name) too (translate words like \"miliardi\" or \"Millionen\").",
+        "- Copy every number, percentage and amount exactly as the text writes it, and never work out new numbers: keep words like \"half\" or \"one in four\" as words, never as percentages. Write the words around a number in \(lang.name) too (translate words like \"miliardi\" or \"Millionen\").",
     ]
     // Same rules as the web (src/prompt.ts), kept in step.
     if history { lines.append("- When the speaker uses a figure of speech (for example calling a campaign a war), report it as the speaker's words, not as a fact.") }

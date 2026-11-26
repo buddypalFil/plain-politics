@@ -173,10 +173,16 @@
       <button id="redact-send" class="secondary" type="button" hidden>Remove personal details and continue</button>
       <div id="output" class="output">
         <div class="empty">
-          <p class="empty-lede">Paste a text and press <b>Explain it</b>. You get a front page like this example, made from the Council housing sample:</p>
-          <!-- A real explainer of the made-up Council housing sample (checked against the text), so the first screen
-               shows what the app makes. Today tab only; History and Compare show their section names instead. -->
-          <div class="stamp example-stamp">Example front page</div>
+          <p class="empty-lede">Paste a text and press <b>Explain it</b>. Here is one, before and after:</p>
+          <!-- Before and after: the start of the made-up Council housing sample, then a real explainer of it (checked
+               against the text), so the first screen shows what the app does. Today tab only; History and Compare
+               show their section names instead. -->
+          <div class="ba-before">
+            <div class="ba-tag"><b>Before</b> A council press release · 165 words</div>
+            <p class="ba-clip">The Council today approved its “Homes for Brookfield” plan. Over the next five years the Council will build 1,200 new homes on former industrial land near the river. At least 35% will be “affordable housing”, meaning rent set at no more than 80% of local market rent. The plan will be paid for by a £40 million loan from the Public Works Loan Board and by selling two council-owned car parks.</p>
+            <button id="load-example" class="ba-load" type="button">Put the whole text in the box and try it</button>
+          </div>
+          <div class="stamp example-stamp">After · the front page it makes</div>
           <div id="example" class="output example" aria-label="Example explainer">
             <section class="card"><h3>In one sentence</h3><p>Brookfield will build 1,200 new homes by the river, but people disagree on whether it is a good idea.</p></section>
             <section class="card"><h3>What it says</h3><ul><li>The Council approved the &quot;Homes for Brookfield&quot; plan: 1,200 new homes on former industrial land over five years.</li><li>At least 35% will be &quot;affordable housing&quot;.</li><li>A £40 million loan and the sale of two council car parks will pay for it.</li><li>Buildings of up to eight storeys will be allowed by the river, up from four.</li></ul></section>

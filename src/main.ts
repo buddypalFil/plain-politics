@@ -371,7 +371,7 @@ function renderChoices(): void {
       ? "Paste two texts and press <b>Compare them</b>. Your comparison appears here, in plain words:"
       : mode === "history"
         ? "Paste a text and press <b>Explain it</b>. Your explainer appears here, in plain words:"
-        : "Paste a text and press <b>Explain it</b>. You get a front page like this example, made from the Council housing sample:";
+        : "Paste a text and press <b>Explain it</b>. Here is one, before and after:";
   }
   // The example front page shows on the Today tab only (see index.html and style.css).
   document.body.dataset.mode = mode;
@@ -456,6 +456,18 @@ for (const box of [input, input2]) {
   });
 }
 const explainLabel = () => (comparing() ? "Compare them" : "Explain it");
+// The "Before" on the example front page: put the whole sample in the box, ready to explain.
+output.addEventListener("click", (e) => {
+  if (!(e.target as HTMLElement).closest("#load-example")) return;
+  const s = SAMPLES.find((x) => x.label === "Council housing plan");
+  if (!s) return;
+  input.value = s.text;
+  sourceNote.hidden = true;
+  updateCount();
+  updatePrivacy();
+  input.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  explainBtn.focus({ preventScroll: true });
+});
 
 // ---------- Privacy guard ----------
 function updatePrivacy(): void {

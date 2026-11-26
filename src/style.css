@@ -333,7 +333,16 @@ button.secondary:hover { background: var(--accent-soft); }
 /* Today: a real example front page instead of the section names, stamped so nobody takes it for their own result.
    It uses the same layout as a real explainer. */
 body[data-mode="today"] .empty .ghost, body:not([data-mode="today"]) .empty .example,
-body:not([data-mode="today"]) .empty .example-stamp { display: none; }
+body:not([data-mode="today"]) .empty .example-stamp, body:not([data-mode="today"]) .empty .ba-before { display: none; }
+/* Before and after: the start of the original as a clipping (dense, fading out), then the front page it becomes */
+.ba-before { margin: 0 0 18px; padding: 12px 16px 12px; border: 1px dashed var(--line); color: var(--ink-2); }
+.ba-tag { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-bottom: 8px; font: 700 11px/1.3 var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.ba-tag b { color: var(--ink); font-size: 13px; font-weight: 800; }
+.ba-clip { max-height: 4.5em; overflow: hidden; margin: 0; font: 400 14px/1.5 var(--sans); color: var(--ink-2);
+  -webkit-mask-image: linear-gradient(#000 55%, transparent); mask-image: linear-gradient(#000 55%, transparent); }
+.ba-load { margin-top: 10px; padding: 0; border: 0; border-bottom: 1.5px solid var(--ink); background: none; color: var(--ink); font: 700 13px/1.4 var(--sans); cursor: pointer; }
+.ba-load:hover { background: var(--accent-soft); }
+.embed .empty .ba-before { display: none; }
 .empty .example { margin-top: 0; color: var(--ink); }
 .empty .example-stamp { margin: 0 0 10px; border-color: var(--warn); color: var(--warn); font-size: 13px; }
 .embed .empty .example, .embed .empty .example-stamp { display: none; }

@@ -77,7 +77,7 @@ export function buildPrompt(text: string, lang: Lang, level: Level = "balanced",
     history
       ? `- Use only what is in the text, except in the "${CONTEXT_HEADING[lang]}" section. Never add facts, numbers or names that are not in it.`
       : "- Use only what is in the text. Never add facts, numbers or names that are not in it.",
-    `- Copy every number, percentage and amount exactly as the text writes it, and never work out new numbers. Write the words around a number in ${LANGUAGE_NAMES[lang]} too (translate words like "miliardi" or "Millionen").`,
+    `- Copy every number, percentage and amount exactly as the text writes it, and never work out new numbers: keep words like "half" or "one in four" as words, never as percentages. Write the words around a number in ${LANGUAGE_NAMES[lang]} too (translate words like "miliardi" or "Millionen").`,
     ...(history ? ["- When the speaker uses a figure of speech (for example calling a campaign a war), report it as the speaker's words, not as a fact."] : []),
     "- If the text does not say something, write that it does not say it.",
     "- Use short sentences and everyday words.",
@@ -133,7 +133,7 @@ export function buildComparePrompt(a: string, b: string, lang: Lang, level: Leve
     "- Be neutral. Treat both texts the same way, with the same depth and the same tone.",
     "- Never say which text is better, fairer, more convincing or more honest, and never say how to vote.",
     "- Use only what is in the two texts. Never add facts, numbers or names that are not in them.",
-    `- Copy every number, percentage and amount exactly as the texts write it, and never work out new numbers. Write the words around a number in ${LANGUAGE_NAMES[lang]}.`,
+    `- Copy every number, percentage and amount exactly as the texts write it, and never work out new numbers: keep words like "half" or "one in four" as words, never as percentages. Write the words around a number in ${LANGUAGE_NAMES[lang]}.`,
     "- If one text does not cover a point, write that it does not say.",
     "- Use short sentences and everyday words.",
     // Comparing needs a little more room per bullet than explaining one text.

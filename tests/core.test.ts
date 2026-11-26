@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { chooseRoute } from "../src/route.ts";
 import { renderMarkdown, escapeHtml, firstLine } from "../src/markdown.ts";
-import { buildPrompt, HEADINGS } from "../src/prompt.ts";
+import { buildPrompt, buildComparePrompt, HEADINGS } from "../src/prompt.ts";
 
 const base = { choice: "auto", chars: 1000, deviceCharLimit: 20000, deviceStatus: "available" } as const;
 
@@ -82,6 +82,12 @@ test("prompt uses the headings of the chosen language", () => {
   const p = buildPrompt("Some text", "it");
   for (const h of HEADINGS.it) assert.ok(p.includes(`## ${h}`));
   assert.ok(p.includes("Italian"));
+});
+
+test('numbers rule: copy numbers exactly, keep "half" and "one in four" as words (accuracy check, 26 Nov)', () => {
+  for (const p of [buildPrompt("Some text", "en"), buildPrompt("Some text", "it", "balanced", "history"), buildComparePrompt("A", "B", "en")]) {
+    assert.ok(p.includes("never work out new numbers") && p.includes('keep words like "half" or "one in four" as words, never as percentages'));
+  }
 });
 
 test("speed vs detail changes the length, never the six sections", () => {
