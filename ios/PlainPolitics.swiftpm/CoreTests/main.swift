@@ -90,6 +90,11 @@ do {
     let h = buildPrompt("x", lang: .en, level: .quick, mode: .history)
     expect(h.contains("## How it tries to persuade") && h.contains("## Historical context") && h.contains("under 12 words"), "history prompt")
     expect(sectionNames(.de, .history).count == 8, "history has 8 sections")
+    // Same claim and number rules as the web (src/prompt.ts).
+    let t = buildPrompt("x", lang: .it)
+    expect(t.contains("in bold, the claim in a few words close to the text's own; then one short sentence on what to check and where"), "claims: bold lead + one sentence, like the web")
+    expect(t.contains("Write the words around a number in Italian too") && !t.contains("figure of speech"), "numbers rule; no history-only rule in Today")
+    expect(h.contains("in bold, a statement the speaker presents") && h.contains("figure of speech"), "history claims and figure-of-speech rule")
 }
 
 // Sections
@@ -97,6 +102,10 @@ do {
     let md = "## In one sentence\nThe council will build homes.\n## What it says\n- 1,200 homes\n* **35%** affordable\n1. A loan\n## Claims worth checking\n- Paid by a loan"
     let s = parseSections(md)
     expect(s.count == 3 && s[0].lines == ["The council will build homes."] && s[1].bullets == ["1,200 homes", "**35%** affordable", "A loan"], "sections parse", "\(s)")
+    // Apple's model writes a claim, then what to check on the next line: they must stay together.
+    let c = parseSections("## Claims worth checking\n- **Bus routes will come back**\n  Check official transport data.\n- **Rates frozen.**\nCheck council records.\n- **Schools**\n\n  Check school place data.\n\nA note after the list.")
+    expect(c[0].bullets == ["**Bus routes will come back**: Check official transport data.", "**Rates frozen.** Check council records.", "**Schools**: Check school place data."]
+           && c[0].lines == ["A note after the list."], "a line under a bullet stays with it", "\(c)")
 }
 
 // Samples

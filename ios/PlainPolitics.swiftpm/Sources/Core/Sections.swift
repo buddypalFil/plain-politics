@@ -11,23 +11,42 @@ struct Section: Identifiable, Equatable {
 
 func parseSections(_ markdown: String) -> [Section] {
     var out: [Section] = []
+    var afterBullet = false  // the last text line was a bullet (or a line added to one)
+    var blank = false        // a blank line came since then
     for raw in markdown.replacingOccurrences(of: "\r\n", with: "\n").split(separator: "\n", omittingEmptySubsequences: false) {
         let line = raw.trimmingCharacters(in: .whitespaces)
-        if line.isEmpty { continue }
+        if line.isEmpty { blank = true; continue }
+        let indented = raw.first == " " || raw.first == "\t"
+        defer { blank = false }
         if line.hasPrefix("#") {
             let title = line.drop(while: { $0 == "#" }).trimmingCharacters(in: .whitespaces)
             out.append(Section(id: out.count, title: title))
+            afterBullet = false
             continue
         }
         // Text before the first heading goes into an untitled section.
         if out.isEmpty { out.append(Section(id: 0, title: "")) }
+        let i = out.count - 1
         if let bullet = bulletText(line) {
-            out[out.count - 1].bullets.append(bullet)
+            out[i].bullets.append(bullet)
+            afterBullet = true
+        } else if afterBullet, !out[i].bullets.isEmpty, !blank || indented {
+            // A line right under a bullet belongs to it, as in Markdown: e.g. a claim, then what to check.
+            // Without this the line was shown apart from its claim, above the whole list.
+            out[i].bullets[out[i].bullets.count - 1] = joined(out[i].bullets[out[i].bullets.count - 1], line)
         } else {
-            out[out.count - 1].lines.append(line)
+            out[i].lines.append(line)
+            afterBullet = false
         }
     }
     return out
+}
+
+/// "**A claim**" + "Check X." -> "**A claim**: Check X."; no extra colon when the bullet already ends a sentence.
+private func joined(_ bullet: String, _ next: String) -> String {
+    let plain = bullet.hasSuffix("**") ? String(bullet.dropLast(2)) : bullet
+    let ends = plain.last.map { ".:;!?".contains($0) } ?? true
+    return bullet + (ends ? " " : ": ") + next
 }
 
 private func bulletText(_ line: String) -> String? {
