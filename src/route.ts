@@ -81,6 +81,15 @@ export function chooseRoute(input: RouteInput): Route {
   }
 
   if (choice === "device") {
+    // Not ready yet: say so now, rather than wait for a multi-GB download and time out.
+    if (deviceStatus !== "available") {
+      return {
+        ok: false,
+        reason: deviceStatus === "downloading"
+          ? "The on-device model is still downloading. Wait for it to finish, or choose Auto."
+          : "The on-device model isn't set up yet. Press Set up on-device AI, or choose Auto.",
+      };
+    }
     return { ok: true, mode: "only_on_device", reason: "You chose this device only." };
   }
 
@@ -89,4 +98,12 @@ export function chooseRoute(input: RouteInput): Route {
   }
   // Model not downloaded yet: Firebase falls back to the cloud without waiting.
   return { ok: true, mode: "prefer_on_device", reason: "On-device model not ready yet, so the cloud stepped in." };
+}
+
+// When the on-device model fails partway through an Auto (device first) run, the cloud may take over. Firebase AI Logic
+// only falls back when the device model is unavailable before the request starts, so the page does this itself.
+// Only in Auto: a text with personal details runs in "only_on_device" mode and never reaches the cloud. Only once,
+// and only online.
+export function shouldFallBackToCloud(o: { mode: Mode; ranOnDevice: boolean; online: boolean; alreadyFellBack: boolean }): boolean {
+  return o.mode === "prefer_on_device" && o.ranOnDevice && o.online && !o.alreadyFellBack;
 }

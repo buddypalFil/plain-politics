@@ -268,7 +268,6 @@ button.secondary:hover { background: var(--accent-soft); }
 .check-claim:disabled .mag { animation: search 1s ease-in-out infinite; }
 @keyframes search { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(3px, -2px); } 50% { transform: translate(0, -4px); } 75% { transform: translate(-3px, -2px); } }
 .check-claim.done { gap: 10px; padding: 0; border: 0; color: var(--ink-2); cursor: default; }
-.check-claim.done::after { content: ""; flex: none; width: 20px; height: 20px; border: 2px solid currentColor; background: var(--x); background-position: center; background-size: 100% 100%; background-repeat: no-repeat; animation: mark .22s ease-out; }
 .claim-drawer { max-width: 72ch; margin: 12px 0 4px; padding: 14px 16px 12px; background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--warn); animation: drawer .25s ease-out both; }
 @keyframes drawer { from { opacity: 0; transform: translateY(-6px); } }
 /* While it checks: a rust line sweeps across the top of the drawer */
@@ -386,6 +385,7 @@ body:not([data-mode="today"]) .empty .example-stamp, body:not([data-mode="today"
 .g-cap { font: 800 46px/1 var(--serif); font-variation-settings: "opsz" 72; margin: 6px 0 4px; }
 .g-note { display: block; margin-top: 6px; font: 500 12.5px/1.4 var(--sans); color: var(--muted); }
 .g-cap s { font-weight: 400; font-size: 28px; color: var(--muted); text-decoration: none; }
+.g-cap .g-sub { display: block; margin-top: 6px; font: 600 11px/1.3 var(--sans); letter-spacing: .04em; color: var(--muted); }
 .gauge .scale { position: relative; height: 24px; margin: 12px 8px 0; border-top: 1.5px solid var(--ink); max-width: 260px; }
 .gauge .dot { position: absolute; top: -7px; transform: translateX(-50%); font: 700 11px/1 var(--sans); text-align: center; }
 .gauge .dot::before { content: ""; display: block; width: 12px; height: 12px; border-radius: 50%; margin: 0 auto 3px; }
@@ -435,6 +435,8 @@ body:not([data-mode="today"]) .empty .example-stamp, body:not([data-mode="today"
 .how-note b { display: inline; font: inherit; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--ink); }
 .embed .how { display: none; }
 @media screen and (max-width: 860px) {
+  /* Fingers, not mouse pointers: every small control gets a 44 px tall target on phones (the text stays the same size). */
+  .chip, .link-btn, .ba-load, .sections button, .navlink { min-height: 44px; display: inline-flex; align-items: center; }
   .how-flow { grid-template-columns: 1fr; }
   .how-step, .how-step + .how-step { padding: 12px 0 14px; border-left: 0; border-top: 1px solid var(--line); }
   .how-step:first-child { border-top: 0; }

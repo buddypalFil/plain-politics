@@ -121,3 +121,24 @@ test("leaves public addresses, public postcodes, years and lower-case look-alike
   assert.deepEqual(kinds("Le budget est de 612 345 678 euros."), []);
   assert.deepEqual(kinds("Section 12 of the Act costs £1,200 per household."), []);
 });
+
+test("an organisation's published contacts are public: press office, enquiries@, gov.uk, leaflet imprint", () => {
+  // The end of a real GOV.UK press release (Low Pay Commission, 28 Oct 2026, Open Government Licence).
+  assert.deepEqual(kinds("Baroness Philippa Stroud can be contacted via the Low Pay Commission's press office on 07920 531 878."), []);
+  assert.deepEqual(kinds("Media enquiries: 020 7946 0000. Out of hours: press@example.org.uk"), []);
+  assert.deepEqual(kinds("Contact us at enquiries@northvale.gov.uk or the switchboard, 01632 960 000."), []);
+  assert.deepEqual(kinds("Questions? Email jane.smith@cabinetoffice.gov.uk"), []);
+  // The imprint every UK election leaflet must carry.
+  assert.deepEqual(kinds("Promoted by Jo Bloggs on behalf of Northvale Labour, both at 12 Market Street, Northvale NV1 2AB."), []);
+  assert.deepEqual(kinds("Printed by Northvale Print Ltd, 4 Mill Road, Northvale NV2 3CD."), []);
+});
+
+test("personal details stay personal, even near words like 'press office'", () => {
+  assert.deepEqual(kinds("I rang the press office, but please call me on 07700 900123."), ["phone"]);
+  assert.deepEqual(kinds("My email is jordan.patel@gmail.com"), ["email"]);
+  assert.deepEqual(kinds("Write to me at 14 Mill Lane, Northvale NV3 4QT."), ["address", "postcode"]);
+  // The press office is in another paragraph, so it says nothing about this number.
+  assert.deepEqual(kinds("Contact the press office.\n\nMy mobile: 07700 900123"), ["phone"]);
+  assert.deepEqual(kinds("Promoted by Jo Bloggs. I live at 14 Mill Lane."), ["address"]);
+  assert.equal(describeFindings(findPersonalData("Post to NE1 4ST")), "1 postcode");
+});

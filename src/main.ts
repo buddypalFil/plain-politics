@@ -7,7 +7,7 @@ import "@fontsource-variable/literata/opsz-italic.css";
 import "@fontsource-variable/libre-franklin/wght.css";
 import "./style.css";
 import { buildPrompt, buildComparePrompt, HEADINGS, COMPARE_HEADINGS, LANGUAGE_NAMES, PERSUADES_HEADING, CONTEXT_HEADING, type Lang, type Level, type Mode } from "./prompt.ts";
-import { chooseRoute, type DeviceStatus, type RunChoice } from "./route.ts";
+import { chooseRoute, shouldFallBackToCloud, type DeviceStatus, type RunChoice } from "./route.ts";
 import { renderMarkdown, firstLine, escapeHtml } from "./markdown.ts";
 import { getDeviceStatus, getImageDeviceStatus, hasPromptApi, warmUpDevice } from "./device.ts";
 import { readingAge, looksEnglish } from "./readability.ts";
@@ -17,7 +17,7 @@ import { youtubeUrl } from "./youtube.ts";
 import { friendlyMessage } from "./errors.ts";
 import { withStallLimit } from "./stream.ts";
 import { findSpin, countByKind, highlightHtml, SPIN_KINDS, type SpinKind } from "./spin.ts";
-import { findPersonalData, describeFindings, redact, redactKnown, type Finding } from "./privacy.ts";
+import { findPersonalData, describeFindings, listFindings, redact, redactKnown, type Finding } from "./privacy.ts";
 import { sectionHints } from "./hints.ts";
 import {
   isConfigured,
@@ -296,7 +296,8 @@ output.addEventListener("click", async (e) => {
     drawer.innerHTML = `${body}${list}${links}<p class="claim-note">${where}</p><div class="claim-suggest"></div>`;
     if (!verdict) shapeHowToCheck(drawer);
     if (r.suggestionsHtml) drawer.querySelector(".claim-suggest")!.attachShadow({ mode: "open" }).innerHTML = r.suggestionsHtml;
-    b.textContent = "Checked";
+    // Not "Checked" with a ballot X: next to a claim, an X reads as "false". The app never says true or false.
+    b.textContent = r.grounded ? "Sources below ↓" : "How to check it ↓";
     b.classList.add("done");
   } catch (err) {
     drawer.innerHTML = `<p class="claim-note">Couldn't check this claim: ${escapeHtml(friendlyError(err))}</p>`;
@@ -306,6 +307,19 @@ output.addEventListener("click", async (e) => {
 });
 
 // ---------- Reading age (worked out on the device) ----------
+// The explainer as a reader reads it: each point and paragraph is a sentence; section headings and buttons are left
+// out (they have no full stops, so they would glue sentences together and make the explainer look harder than it is).
+function explainerProse(): string {
+  return [...output.querySelectorAll<HTMLElement>(".card li, .card > p")]
+    .map((el) => {
+      const c = el.cloneNode(true) as HTMLElement;
+      c.querySelectorAll("button, .claim-drawer").forEach((x) => x.remove());
+      const t = (c.textContent ?? "").replace(/\s+/g, " ").trim();
+      return /[.!?:;]["”’)]?$/.test(t) ? t : t + ".";
+    })
+    .filter((t) => t.length > 1)
+    .join(" ");
+}
 function showGauge(original: string, explainer: string, lang: Lang): void {
   const gauge = $("gauge");
   const a = lang === "en" && looksEnglish(original) ? readingAge(original) : null;
@@ -318,7 +332,7 @@ function showGauge(original: string, explainer: string, lang: Lang): void {
   o.style.left = pos(a.age); o.textContent = Math.abs(a.age - b.age) < 2 ? "" : String(a.age);
   // Only show "a → b" when the explainer is easier; an already plain text gets a note instead of a step up.
   $("g-cap").innerHTML = b.age < a.age
-    ? `<s title="The original">${a.age}</s> → <b title="This explainer">${b.age}</b>`
+    ? `<s title="The original">${a.age}</s> → <b title="This explainer">${b.age}</b><small class="g-sub">the original → this explainer</small>`
     : `<small class="g-note">The original was already easy to read (reading age ${a.age}), so the explainer keeps it simple.</small>`;
   $("gauge").setAttribute("aria-label", `Reading age: the original needs ${a.age}, this explainer ${b.age}`);
   gauge.hidden = false;
@@ -478,8 +492,8 @@ function updatePrivacy(): void {
     found.length === 0
       ? "Privacy guard on: personal details never go to the cloud."
       : deviceStatus === "available"
-        ? `Found ${describeFindings(found)}. This text will only run on your device.`
-        : `Found ${describeFindings(found)}. Personal details never go to the cloud, so remove them first.`;
+        ? `Found ${describeFindings(found)} (${listFindings(found)}). This text will only run on your device.`
+        : `Found ${describeFindings(found)} (${listFindings(found)}). Personal details never go to the cloud, so remove them first.`;
 }
 // Both boxes are checked together, so a name given in Text A is also removed from Text B.
 function redactBoxes(): void {
@@ -530,7 +544,9 @@ async function refreshDevice(): Promise<void> {
     pill.classList.add("cloud");
     deviceHelp.hidden = false;
     deviceHelp.textContent = hasPromptApi()
-      ? "On-device AI can't run here (this language, or a computer below Chrome's minimum), so the cloud is used."
+      ? /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)
+        ? "On a phone the cloud is used, still behind the privacy guard. In Chrome on a computer, it can run on your own device."
+        : "On-device AI can't run here (this language, or a computer below Chrome's minimum), so the cloud is used."
       : "Want it private? In desktop Chrome (148 or newer), the built-in AI keeps your text on your computer. Until then the cloud is used.";
     // The details, for anyone who hovers: Chrome's minimum is 16 GB of memory or a 4 GB graphics card, plus 22 GB free.
     deviceHelp.title = hasPromptApi()
@@ -831,8 +847,10 @@ async function explainOnce(): Promise<void> {
     offline: !navigator.onLine,
   });
   if (!route.ok) {
-    showError(route.reason);
+    showError(route.privacy ? `${route.reason} Found: ${listFindings(findings, 3)}.` : route.reason);
     redactSendBtn.hidden = !route.privacy;
+    // On a phone the message is far below the button: bring it into view, as a normal run does.
+    if (matchMedia("(max-width: 860px)").matches && !embedded) $("out-panel").scrollIntoView({ behavior: "smooth", block: "start" });
     // A clear "stopped" frame, in place of the example front page (see style.css).
     badge.hidden = !route.privacy;
     if (route.privacy) {
@@ -862,7 +880,7 @@ async function explainOnce(): Promise<void> {
 
   const started = performance.now();
   // A live timer, so a slower on-device run never looks stuck.
-  const likelyDevice = route.mode === "only_on_device" || (route.mode === "prefer_on_device" && deviceStatus === "available");
+  let likelyDevice = route.mode === "only_on_device" || (route.mode === "prefer_on_device" && deviceStatus === "available");
   badge.hidden = false;
   badge.className = `stamp running ${likelyDevice ? "device" : "cloud"}`;
   const tick = () => {
@@ -874,7 +892,8 @@ async function explainOnce(): Promise<void> {
   setRoute(likelyDevice ? "device" : "cloud", true);
   let markdown = "";
   try {
-    const model = makeModel(route.mode, lang, settings.cloudModel);
+    let model = makeModel(route.mode, lang, settings.cloudModel);
+    let fellBack = false;
     const prompt = compare ? buildComparePrompt(a, b, lang, level) : buildPrompt(text, lang, level, mode);
     // When Google's cloud model is overloaded it can stop mid-answer: it streams part of the explainer, then ends
     // with a "high demand" error. Try again after a short pause. The first tries stream (fastest when Google is
@@ -882,6 +901,8 @@ async function explainOnce(): Promise<void> {
     let final;
     let longestPartial = "";
     for (let attempt = 1; ; attempt++) {
+      // Where this try is running: the first chunk says; before it arrives, the route's best guess.
+      let ranSource: string | undefined;
       try {
         markdown = "";
         const cancel = new AbortController();
@@ -899,6 +920,7 @@ async function explainOnce(): Promise<void> {
           result.response.catch(() => {});
           // Give up on an answer that goes quiet (the first words can take a while on the device), then retry.
           for await (const chunk of withStallLimit(result.stream, FIRST_WORDS_MS, NEXT_WORDS_MS, () => cancel.abort())) {
+            ranSource ??= chunk.inferenceSource;
             markdown += chunk.text();
             output.innerHTML = renderMarkdown(markdown) + pendingSections(markdown, runSections);
           }
@@ -906,12 +928,26 @@ async function explainOnce(): Promise<void> {
           final = await result.response;
         }
         // After a busy spell, go back to the plain reason; the retries only matter to the console.
-        if (attempt > 1) {
+        if (attempt > 1 && !fellBack) {
           routeNote.textContent = route.reason;
           console.info(`Google's cloud was busy; it worked on try ${attempt}.`);
         }
         break;
       } catch (e) {
+        // Gemini Nano failed partway (Auto only): the cloud takes over, once. Personal texts never get here.
+        const ranOnDevice = ranSource ? ranSource === "on_device" : likelyDevice;
+        if (shouldFallBackToCloud({ mode: route.mode, ranOnDevice, online: navigator.onLine, alreadyFellBack: fellBack })) {
+          fellBack = true;
+          likelyDevice = false;
+          model = makeModel("only_in_cloud", lang, settings.cloudModel);
+          console.info("[Firebase AI Logic] The on-device model couldn't finish; trying again in the cloud.", e);
+          routeNote.textContent = "The on-device model couldn't finish, so the cloud stepped in.";
+          setRoute("cloud", true);
+          longestPartial = "";
+          output.innerHTML = pendingSections("", runSections);
+          attempt = 0;
+          continue;
+        }
         if (markdown.length > longestPartial.length) longestPartial = markdown;
         // Offline is not "busy": trying again can't help, so say so at once.
         if (attempt >= MAX_ATTEMPTS || !isBusyError(e) || !navigator.onLine) {
@@ -920,17 +956,19 @@ async function explainOnce(): Promise<void> {
           throw e;
         }
         output.innerHTML = pendingSections("", runSections);
-        routeNote.textContent = "The cloud is slow right now. Still working…";
+        routeNote.textContent = ranOnDevice ? "Still working on your device…" : "The cloud is slow right now. Still working…";
         console.info(`Google's cloud AI is busy. Trying again (${attempt + 1} of ${MAX_ATTEMPTS}).`);
         await new Promise((r) => setTimeout(r, 1500 * attempt));
       }
     }
     const source = final.inferenceSource === "on_device" ? "on_device" : "in_cloud";
+    // For anyone checking in DevTools: the Firebase AI Logic mode asked for, and where the answer really ran.
+    console.info(`[Firebase AI Logic] mode=${fellBack ? `${route.mode} → only_in_cloud (device failed)` : route.mode} inferenceSource=${final.inferenceSource ?? "in_cloud"}`);
     const secs = ((performance.now() - started) / 1000).toFixed(1);
     showBadge(source, secs);
     setRoute(source === "on_device" ? "device" : "cloud", false);
     // Reading age compares one original with its explainer, so it is left out of comparisons.
-    if (!compare) showGauge(text, output.innerText, lang);
+    if (!compare) showGauge(text, explainerProse(), lang);
     else shapeDiffer(lang);
     showSpin(compare ? [a, b] : [a]);
     addClaimButtons(lang);

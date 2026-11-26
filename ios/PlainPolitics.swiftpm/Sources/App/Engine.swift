@@ -125,7 +125,11 @@ final class Engine: ObservableObject {
         // whole answer in one go, which got through more often in busy spells (same as the website).
         let attempts = 3
         var longestPartial = ""
-        for attempt in 1...attempts {
+        var place = place
+        var fellBack = false
+        var attempt = 1
+        while attempt <= attempts {
+            defer { attempt += 1 }
             // A fresh session each time, so a failed attempt isn't part of the conversation.
             let session = switch place {
             case .deviceFirst: ai.generativeModelSession(model: .hybridModel(primary: device, secondary: cloud))
@@ -150,6 +154,16 @@ final class Engine: ObservableObject {
                 if ranOnDevice == true { deviceAnswers = true }
                 return
             } catch {
+                // Apple's model failed partway (device-first only): Gemini in the cloud takes over, once.
+                if shouldFallBackToCloud(place: place, ranOnDevice: ranOnDevice ?? true, online: NetworkWatch.shared.online, alreadyFellBack: fellBack) {
+                    fellBack = true
+                    place = .cloudOnly
+                    ranOnDevice = nil
+                    markdown = ""
+                    longestPartial = ""
+                    attempt = 0
+                    continue
+                }
                 if markdown.count > longestPartial.count { longestPartial = markdown }
                 if attempt < attempts && Self.isBusy(error) {
                     try? await Task.sleep(for: .seconds(2 * attempt))

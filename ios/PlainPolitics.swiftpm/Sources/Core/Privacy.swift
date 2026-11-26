@@ -11,7 +11,7 @@ enum PersonalKind: String, CaseIterable {
         switch self {
         case .email: return "email address"
         case .phone: return "phone number"
-        case .postcode: return "home postcode"
+        case .postcode: return "postcode"
         case .niNumber: return "National Insurance number"
         case .card: return "card number"
         case .iban: return "bank account number"
@@ -48,6 +48,8 @@ private struct Rule {
     let regex: NSRegularExpression
     var group = 0
     var check: ((String) -> Bool)? = nil
+    /// An organisation's published contact (see isPublicContact) is not personal.
+    var publicOK = false
 }
 
 private func re(_ pattern: String, _ options: NSRegularExpression.Options = []) -> NSRegularExpression {
@@ -110,8 +112,40 @@ private func looksLikeHomeAddress(_ m: String) -> Bool {
     return !matches(publicAddress, longStreet(s))
 }
 
+// Contact details an organisation publishes are public, not a private person's: a press office's or helpline's
+// phone, an enquiries@ or gov.uk email, and the "Promoted by … at <address>" imprint every UK election leaflet must
+// carry. Same rules as the website.
+private let roleEmail = re(#"^(?:press|media|news|newsdesk|newsroom|enquiries|enquiry|info|information|contact|contactus|office|communications|comms|hello|help|helpdesk|support|admin|team|campaigns?|correspondence)(?:[._-]?(?:office|team|desk|unit))?@"#, [.caseInsensitive])
+private let officialEmail = re(#"@(?:[\w-]+\.)*(?:gov\.uk|parliament\.uk|gov\.scot|gov\.wales|llyw\.cymru|police\.uk|nhs\.uk|nhs\.net|gov|europa\.eu|gouv\.fr|gov\.it|gob\.es|bund\.de)$"#, [.caseInsensitive])
+private let orgPhoneCue = re(#"\b(?:press office|press (?:enquiries|team|line)|media (?:enquiries|team|office|line)|news ?desk|newsroom|switchboard|help ?line|contact cent(?:re|er)|customer services?|enquiries|enquiry line|constituency office|council offices?|town hall|ufficio stampa|service de presse|oficina de prensa|Pressestelle)\b"#, [.caseInsensitive])
+private let orgAddressCue = re(#"\b(?:promoted by|printed by|published by|on behalf of|registered office|constituency office|head office|headquarters|council offices|town hall|offices? (?:is |are )?at)\b"#, [.caseInsensitive])
+/// "I called the press office, please call me on 07…": a private word after the cue means the detail is personal.
+private let privateWords = re(#"\b(?:[Mm]e|[Mm]y|[Mm]ine|I|I'm|I am|[Ww]e live|[Oo]ur home)\b"#)
+private let paragraphBreak = re(#"\n\s*\n"#)
+
+/// The text after the last cue, or nil when there is no cue.
+private func afterLastCue(_ cue: NSRegularExpression, _ before: String) -> String? {
+    let ns = before as NSString
+    guard let last = cue.matches(in: before, range: NSRange(location: 0, length: ns.length)).last else { return nil }
+    return ns.substring(from: last.range.location + last.range.length)
+}
+
+func isPublicContact(_ kind: PersonalKind, _ match: String, _ text: String, _ index: Int) -> Bool {
+    if kind == .email { return matches(roleEmail, match) || matches(officialEmail, match) }
+    // Same paragraph only.
+    let upTo = (text as NSString).substring(to: index)
+    let breaks = paragraphBreak.matches(in: upTo, range: NSRange(location: 0, length: (upTo as NSString).length))
+    let para = breaks.last.map { (upTo as NSString).substring(from: $0.range.location + $0.range.length) } ?? upTo
+    let window = kind == .phone ? 100 : 160
+    let p = para as NSString
+    let tail = p.length > window ? p.substring(from: p.length - window) : para
+    guard kind == .phone || kind == .address || kind == .postcode else { return false }
+    guard let gap = afterLastCue(kind == .phone ? orgPhoneCue : orgAddressCue, tail) else { return false }
+    return !matches(privateWords, gap)
+}
+
 private let rules: [Rule] = [
-    Rule(kind: .email, regex: re(#"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"#)),
+    Rule(kind: .email, regex: re(#"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"#), publicOK: true),
     Rule(kind: .iban, regex: re(#"\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]{4}){3,7}(?: ?[A-Z0-9]{1,3})?\b"#)),
     Rule(kind: .card, regex: re(#"\b(?:\d[ -]?){13,19}\b"#), check: { m in
         let d = digits(m)
@@ -121,30 +155,30 @@ private let rules: [Rule] = [
     // Any number written with a country code: "+44 (0)7700 900123", "+33 6 12 34 56 78", "+39 333 1234567".
     Rule(kind: .phone, regex: re(#"\+\d{1,3}(?:[ .-]?\(0\))?(?:[ .-]?\(?\d{1,4}\)?){2,6}"#), check: { m in
         (9...15).contains(phoneDigits(m).count)
-    }),
+    }, publicOK: true),
     // UK mobile/landline (07…, 01…, 02…).
     Rule(kind: .phone, regex: re(#"(?<![\d.,])\(?0\d{2,5}\)?[ -]?\d{3,4}[ -]?\d{3,4}\b"#), check: { m in
         let d = digits(m)
         return d.hasPrefix("0") && d.count > 1 && d.dropFirst().first != "0" && (10...13).contains(d.count)
-    }),
+    }, publicOK: true),
     // French numbers in pairs ("06 12 34 56 78") and Italian mobiles ("333 1234567").
-    Rule(kind: .phone, regex: re(#"\b0[1-9](?:[ .-]?\d{2}){4}\b"#)),
-    Rule(kind: .phone, regex: re(#"(?<![\d.,])\b3\d{2}[ .-]?\d{6,7}\b"#)),
+    Rule(kind: .phone, regex: re(#"\b0[1-9](?:[ .-]?\d{2}){4}\b"#), publicOK: true),
+    Rule(kind: .phone, regex: re(#"(?<![\d.,])\b3\d{2}[ .-]?\d{6,7}\b"#), publicOK: true),
     // After "call me on", "chiamami al", "llámame al", "ruf mich an unter"…: any 9-13 digits in groups (not a run of years).
     Rule(kind: .phone, regex: re(#"\b"# + phoneCue + #"\b[^\d\n]{0,25}(\(?\d{2,4}\)?(?:[ .-]?\d{2,4}){2,4})"#, [.caseInsensitive]), group: 1, check: { m in
         (9...13).contains(phoneDigits(m).count) && !matches(yearsOnly, m)
-    }),
+    }, publicOK: true),
     // Only phrases that point at a private person's details (politicians often say "my name is…").
     Rule(kind: .address, regex: re(#"\b(?:I live at|my (?:home )?address is)\s+(\d[^.;\n]{0,60})"#, [.caseInsensitive]), group: 1),
     Rule(kind: .selfDescription, regex: re(#"\b(?:my date of birth is|I was born on)\s+(\d[^.;\n]{0,60})"#, [.caseInsensitive]), group: 1),
     // "I live on Mill Lane": a street given as where the writer lives, even without a house number.
     Rule(kind: .address, regex: re(#"\b(?:I|[Ww]e) live (?:on|in|at) ((?:[A-Z][a-z'’-]+ ){1,3}"# + street + #")\b"#), group: 1),
     // "14 Mill Lane", "Flat 2, 30 Station Road", "221B Baker Street".
-    Rule(kind: .address, regex: re(#"\b(?:(?:Flat|Apartment|Apt) \d+[A-Za-z]?,? )?\d{1,4}[A-Za-z]?,? (?:[A-Z][a-z'’-]+ ){1,3}"# + street + #"\b"#), check: looksLikeHomeAddress),
+    Rule(kind: .address, regex: re(#"\b(?:(?:Flat|Apartment|Apt) \d+[A-Za-z]?,? )?\d{1,4}[A-Za-z]?,? (?:[A-Z][a-z'’-]+ ){1,3}"# + street + #"\b"#), check: looksLikeHomeAddress, publicOK: true),
     // A name someone gives as their own, in the five languages ("My name is Jordan Patel", "Mi chiamo Giulia Rossi").
     // Every other mention is removed too.
     Rule(kind: .ownName, regex: re(#"\b(?:[Mm]y name is|[Mm]i chiamo|[Ii]l mio nome è|[Jj]e m['’]appelle|[Mm]on nom est|[Mm]e llamo|[Mm]i nombre es|[Ii]ch hei(?:ß|ss)e|[Mm]ein Name ist) ((?:[A-ZÀ-Ý][a-zà-ÿ'’-]+)(?: [A-ZÀ-Ý][a-zà-ÿ'’-]+){0,2})"#), group: 1),
-    Rule(kind: .postcode, regex: re(#"\b[A-Za-z]{1,2}\d[A-Za-z\d]? ?\d[A-Za-z]{2}\b"#)),
+    Rule(kind: .postcode, regex: re(#"\b[A-Za-z]{1,2}\d[A-Za-z\d]? ?\d[A-Za-z]{2}\b"#), publicOK: true),
 ]
 
 func findPersonalData(_ text: String) -> [Finding] {
@@ -170,6 +204,7 @@ func findPersonalData(_ text: String) -> [Finding] {
                 let before = ns.substring(with: NSRange(location: from, length: start - from))
                 if match != match.uppercased() && !matches(postcodeCue, before) { continue }
             }
+            if rule.publicOK && isPublicContact(rule.kind, match, text, start) { continue }
             if overlaps(range) { continue }
             taken.append(range)
             found.append(Finding(kind: rule.kind, match: match, index: start))

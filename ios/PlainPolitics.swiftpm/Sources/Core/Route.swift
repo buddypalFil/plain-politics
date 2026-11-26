@@ -67,3 +67,10 @@ func chooseRoute(_ i: RouteInput) -> Route {
         return .run(.deviceFirst, reason: "Device first, cloud only if needed.")
     }
 }
+
+/// When Apple's on-device model fails partway through a device-first run, the cloud may take over. Firebase's hybrid
+/// session only falls back before the device has answered, so the app does this itself (same rule as the website).
+/// Only device-first: a text with personal details runs device-only and never reaches the cloud. Only once, online.
+func shouldFallBackToCloud(place: Where, ranOnDevice: Bool, online: Bool, alreadyFellBack: Bool) -> Bool {
+    place == .deviceFirst && ranOnDevice && online && !alreadyFellBack
+}

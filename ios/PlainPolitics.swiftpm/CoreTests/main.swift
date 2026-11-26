@@ -9,6 +9,13 @@ func expect(_ cond: Bool, _ name: String, _ detail: @autoclosure () -> String = 
     if cond { passed += 1 } else { failed += 1; print("FAIL \(name) \(detail())") }
 }
 
+// Device fails mid-run: the cloud takes over only device-first, online, once (same as tests/core.test.ts).
+expect(shouldFallBackToCloud(place: .deviceFirst, ranOnDevice: true, online: true, alreadyFellBack: false), "fallback when device fails")
+expect(!shouldFallBackToCloud(place: .deviceOnly, ranOnDevice: true, online: true, alreadyFellBack: false), "never for device-only (personal text)")
+expect(!shouldFallBackToCloud(place: .deviceFirst, ranOnDevice: false, online: true, alreadyFellBack: false), "a cloud error is not a device failure")
+expect(!shouldFallBackToCloud(place: .deviceFirst, ranOnDevice: true, online: false, alreadyFellBack: false), "not offline")
+expect(!shouldFallBackToCloud(place: .deviceFirst, ranOnDevice: true, online: true, alreadyFellBack: true), "only once")
+
 // Privacy guard
 do {
     let t = "Dear MP, my name is Jordan Patel. Write to jordan.patel@example.com or call 07700 900123. I live at 12 Mill Lane, NV1 2AB. Jordan Patel"
@@ -27,6 +34,22 @@ do {
     let b = "Jordan Patel says crime fell by 20%."
     let both = findPersonalData(a + "\n\n" + b)
     expect(!redactKnown(redact(b), both).contains("Jordan"), "name removed from the other text")
+    // An organisation's published contacts are public (same cases as tests/privacy.test.ts).
+    let kindsOf = { (t: String) in findPersonalData(t).map(\.kind) }
+    for t in [
+        "Baroness Philippa Stroud can be contacted via the Low Pay Commission's press office on 07920 531 878.",
+        "Media enquiries: 020 7946 0000. Out of hours: press@example.org.uk",
+        "Contact us at enquiries@northvale.gov.uk or the switchboard, 01632 960 000.",
+        "Questions? Email jane.smith@cabinetoffice.gov.uk",
+        "Promoted by Jo Bloggs on behalf of Northvale Labour, both at 12 Market Street, Northvale NV1 2AB.",
+        "Printed by Northvale Print Ltd, 4 Mill Road, Northvale NV2 3CD.",
+    ] { expect(kindsOf(t).isEmpty, "public contact is not personal", "\(t) -> \(kindsOf(t))") }
+    expect(kindsOf("I rang the press office, but please call me on 07700 900123.") == [.phone], "private phone near 'press office'")
+    expect(kindsOf("My email is jordan.patel@gmail.com") == [.email], "private email")
+    expect(Set(kindsOf("Write to me at 14 Mill Lane, Northvale NV3 4QT.")) == [.address, .postcode], "home address and postcode")
+    expect(kindsOf("Contact the press office.\n\nMy mobile: 07700 900123") == [.phone], "press office in another paragraph")
+    expect(kindsOf("Promoted by Jo Bloggs. I live at 14 Mill Lane.") == [.address], "I live at stays personal")
+    expect(describeFindings(findPersonalData("Post to NE1 4ST")) == "1 postcode", "label says postcode")
 }
 
 // Street addresses (same cases as tests/privacy.test.ts)
@@ -94,7 +117,8 @@ do {
     let t = buildPrompt("x", lang: .it)
     expect(t.contains("in bold, the claim in a few words close to the text's own; then one short sentence on what to check and where"), "claims: bold lead + one sentence, like the web")
     expect(t.contains("Write the words around a number in Italian too") && !t.contains("figure of speech"), "numbers rule; no history-only rule in Today")
-    expect(t.contains("keep words like \"half\" or \"one in four\" as words, never as percentages"), "numbers rule: half and one in four stay words")
+    expect(t.contains("digits stay digits (years and dates too), and words like \"half\" or \"one in four\" stay words, never percentages"), "numbers rule: digits stay digits, half and one in four stay words")
+    expect(t.contains("Say who says each thing") && h.contains("Say who says each thing"), "attribution rule, like the web")
     expect(h.contains("in bold, a statement the speaker presents") && h.contains("figure of speech") && h.contains("including the first sentence") && h.contains("Report the speaker's view, not facts") && !t.contains("Report the speaker's view"), "history claims and figure-of-speech rule, headline included")
 }
 

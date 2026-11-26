@@ -14,7 +14,7 @@ export interface Finding {
 export const KIND_LABEL: Record<PersonalKind, string> = {
   email: "email address",
   phone: "phone number",
-  postcode: "home postcode",
+  postcode: "postcode",
   "ni-number": "National Insurance number",
   card: "card number",
   iban: "bank account number",
@@ -90,10 +90,49 @@ interface Rule {
   re: RegExp;
   check?: (m: string) => boolean;
   group?: number; // use this capture group as the personal detail
+  publicOk?: boolean; // an organisation's published contact (see isPublicContact) is not personal
+}
+
+// Contact details an organisation publishes are public, not a private person's: a press office's or helpline's
+// phone, an enquiries@ or gov.uk email, and the "Promoted by … at <address>" imprint every UK election leaflet must
+// carry. Without this, nearly every real press release and leaflet would be stopped.
+const ROLE_EMAIL =
+  /^(?:press|media|news|newsdesk|newsroom|enquiries|enquiry|info|information|contact|contactus|office|communications|comms|hello|help|helpdesk|support|admin|team|campaigns?|correspondence)(?:[._-]?(?:office|team|desk|unit))?@/i;
+const OFFICIAL_EMAIL =
+  /@(?:[\w-]+\.)*(?:gov\.uk|parliament\.uk|gov\.scot|gov\.wales|llyw\.cymru|police\.uk|nhs\.uk|nhs\.net|gov|europa\.eu|gouv\.fr|gov\.it|gob\.es|bund\.de)$/i;
+// Words just before a phone number that say it belongs to an organisation.
+const ORG_PHONE_CUE =
+  /\b(?:press office|press (?:enquiries|team|line)|media (?:enquiries|team|office|line)|news ?desk|newsroom|switchboard|help ?line|contact cent(?:re|er)|customer services?|enquiries|enquiry line|constituency office|council offices?|town hall|ufficio stampa|service de presse|oficina de prensa|Pressestelle)\b/gi;
+// Words before an address or postcode that say it is an organisation's (the leaflet imprint, an office).
+const ORG_ADDRESS_CUE =
+  /\b(?:promoted by|printed by|published by|on behalf of|registered office|constituency office|head office|headquarters|council offices|town hall|offices? (?:is |are )?at)\b/gi;
+// "I called the press office, please call me on 07…": a private word after the cue means the detail is personal.
+const PRIVATE_WORDS = /\b(?:[Mm]e|[Mm]y|[Mm]ine|I|I'm|I am|[Ww]e live|[Oo]ur home)\b/;
+
+function afterLastCue(cue: RegExp, before: string): string | null {
+  let last: RegExpExecArray | null = null;
+  cue.lastIndex = 0;
+  for (let m = cue.exec(before); m; m = cue.exec(before)) last = m;
+  return last ? before.slice(last.index + last[0].length) : null;
+}
+
+export function isPublicContact(kind: PersonalKind, match: string, text: string, index: number): boolean {
+  if (kind === "email") return ROLE_EMAIL.test(match) || OFFICIAL_EMAIL.test(match);
+  // Same paragraph only.
+  const para = text.slice(0, index).split(/\n\s*\n/).pop() ?? "";
+  if (kind === "phone") {
+    const gap = afterLastCue(ORG_PHONE_CUE, para.slice(-100));
+    return gap !== null && !PRIVATE_WORDS.test(gap);
+  }
+  if (kind === "address" || kind === "postcode") {
+    const gap = afterLastCue(ORG_ADDRESS_CUE, para.slice(-160));
+    return gap !== null && !PRIVATE_WORDS.test(gap);
+  }
+  return false;
 }
 
 const RULES: Rule[] = [
-  { kind: "email", re: /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g },
+  { kind: "email", re: /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, publicOk: true },
   { kind: "iban", re: /\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]{4}){3,7}(?: ?[A-Z0-9]{1,3})?\b/g },
   {
     kind: "card",
@@ -109,6 +148,7 @@ const RULES: Rule[] = [
     kind: "phone",
     re: /\+\d{1,3}(?:[ .-]?\(0\))?(?:[ .-]?\(?\d{1,4}\)?){2,6}/g,
     check: (m) => phoneDigits(m).length >= 9 && phoneDigits(m).length <= 15,
+    publicOk: true,
   },
   // UK mobile/landline (07…, 01…, 02…).
   {
@@ -118,10 +158,11 @@ const RULES: Rule[] = [
       const d = m.replace(/\D/g, "");
       return /^0[1-9]/.test(d) && d.length >= 10 && d.length <= 13;
     },
+    publicOk: true,
   },
   // French numbers in pairs ("06 12 34 56 78") and Italian mobiles ("333 1234567").
-  { kind: "phone", re: /\b0[1-9](?:[ .-]?\d{2}){4}\b/g },
-  { kind: "phone", re: /(?<![\d.,])\b3\d{2}[ .-]?\d{6,7}\b/g },
+  { kind: "phone", re: /\b0[1-9](?:[ .-]?\d{2}){4}\b/g, publicOk: true },
+  { kind: "phone", re: /(?<![\d.,])\b3\d{2}[ .-]?\d{6,7}\b/g, publicOk: true },
   // After "call me on", "chiamami al", "llámame al", "ruf mich an unter"…: any 9-13 digits in groups.
   {
     kind: "phone",
@@ -129,6 +170,7 @@ const RULES: Rule[] = [
     group: 1,
     // Not a run of years ("they call it 2019 2020 2021").
     check: (m) => phoneDigits(m).length >= 9 && phoneDigits(m).length <= 13 && !/^(?:(?:19|20)\d{2}[ .-]?)+$/.test(m),
+    publicOk: true,
   },
   // Only phrases that point at a private person's details (politicians often say "my name is…").
   {
@@ -152,6 +194,7 @@ const RULES: Rule[] = [
     kind: "address",
     re: new RegExp(`\\b(?:(?:Flat|Apartment|Apt) \\d+[A-Za-z]?,? )?\\d{1,4}[A-Za-z]?,? (?:[A-Z][a-z'’-]+ ){1,3}${STREET}\\b`, "g"),
     check: looksLikeHomeAddress,
+    publicOk: true,
   },
   // A name someone gives as their own ("My name is Jordan Patel"). Every other mention of that name is removed too.
   // In the five languages: "my name is", "mi chiamo", "je m'appelle", "me llamo", "ich heiße".
@@ -160,7 +203,7 @@ const RULES: Rule[] = [
     re: /\b(?:[Mm]y name is|[Mm]i chiamo|[Ii]l mio nome è|[Jj]e m['’]appelle|[Mm]on nom est|[Mm]e llamo|[Mm]i nombre es|[Ii]ch hei(?:ß|ss)e|[Mm]ein Name ist) ((?:[A-ZÀ-Ý][a-zà-ÿ'’-]+)(?: [A-ZÀ-Ý][a-zà-ÿ'’-]+){0,2})/g,
     group: 1,
   },
-  { kind: "postcode", re: /\b[A-Za-z]{1,2}\d[A-Za-z\d]? ?\d[A-Za-z]{2}\b/g },
+  { kind: "postcode", re: /\b[A-Za-z]{1,2}\d[A-Za-z\d]? ?\d[A-Za-z]{2}\b/g, publicOk: true },
 ];
 
 // Upper-case postcodes count anywhere except public buildings; lower-case ones only after a cue (see POSTCODE_CUE).
@@ -181,6 +224,7 @@ export function findPersonalData(text: string): Finding[] {
       const index = (m.index ?? 0) + m[0].indexOf(match);
       if (rule.check && !rule.check(match)) continue;
       if (rule.kind === "postcode" && !postcodeOk(match, text.slice(Math.max(0, index - 60), index))) continue;
+      if (rule.publicOk && isPublicContact(rule.kind, match, text, index)) continue;
       if (overlaps(index, index + match.length)) continue;
       taken.push([index, index + match.length]);
       found.push({ kind: rule.kind, match, index });
@@ -213,6 +257,13 @@ export function describeFindings(findings: Finding[]): string {
   const parts = [...counts].map(([k, n]) => `${n} ${KIND_LABEL[k]}${n > 1 ? "s" : ""}`);
   if (parts.length <= 1) return parts.join("");
   return parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1];
+}
+
+// The details themselves, so the reader can see what was found: "07920 531 878, press@example.org".
+export function listFindings(findings: Finding[], max = 2): string {
+  const seen = [...new Set(findings.map((f) => f.match))];
+  const shown = seen.slice(0, max).map((m) => (m.length > 40 ? m.slice(0, 39) + "…" : m));
+  return shown.join(", ") + (seen.length > max ? ` and ${seen.length - max} more` : "");
 }
 
 // Replaces every personal detail with a label like [email].

@@ -17,7 +17,8 @@ export interface ReadingAge {
 }
 
 export function readingAge(text: string): ReadingAge | null {
-  const clean = text.replace(/\s+/g, " ").trim();
+  // A heading or a paragraph without a full stop still ends a sentence ("FOR IMMEDIATE RELEASE").
+  const clean = text.replace(/([^.!?:;\s])[ \t]*\n\s*\n/g, "$1.\n\n").replace(/\s+/g, " ").trim();
   const words = clean.match(/[A-Za-z][A-Za-z'’-]*/g) ?? [];
   if (words.length < 30) return null;
   const sentences = Math.max(1, (clean.match(/[.!?]+(\s|$)/g) ?? []).length);

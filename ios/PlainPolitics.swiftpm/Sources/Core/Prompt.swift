@@ -116,10 +116,11 @@ func buildPrompt(_ text: String, lang: Lang, level: Level = .balanced, mode: Mod
             : "You explain political texts (news articles, speeches, bills, manifestos) to ordinary readers in plain words.",
         "Rules:",
         "- Be neutral. Do not take sides, praise or criticise anyone, or say how to vote.",
+        "- Say who says each thing (for example \"the council says\", \"the candidate promises\", \"the bill would\"); after the first mention, a short form is enough (\"Rowan promises\"). Never write a claim, promise or opinion from the text as if it were a fact.",
         history
             ? "- Use only what is in the text, except in the \"\(lang.contextHeading)\" section. Never add facts, numbers or names that are not in it."
             : "- Use only what is in the text. Never add facts, numbers or names that are not in it.",
-        "- Copy every number, percentage and amount exactly as the text writes it, and never work out new numbers: keep words like \"half\" or \"one in four\" as words, never as percentages. Write the words around a number in \(lang.name) too (translate words like \"miliardi\" or \"Millionen\").",
+        "- Copy every number, percentage and amount exactly as the text writes it, and never work out new numbers: digits stay digits (years and dates too), and words like \"half\" or \"one in four\" stay words, never percentages. Write the words around a number in \(lang.name) too (translate words like \"miliardi\" or \"Millionen\").",
     ]
     // Same rules as the web (src/prompt.ts), kept in step.
     if history { lines.append("- When the speaker uses a figure of speech (for example calling a campaign a war, or themselves a soldier), report it as the speaker's words, not as a fact, in every section including the first sentence: write \"the speaker calls it a war\", never that a war happened.") }
@@ -141,7 +142,7 @@ func buildPrompt(_ text: String, lang: Lang, level: Level = .balanced, mode: Mod
         "## \(h[2])",
         history
             ? "\(bullets). Each one (do not start with the word \"Claim\"): in bold, a statement the speaker presents as a fact or as something everyone agrees on, in a few words close to the text's own; then one short sentence on what a reader could check about it with history sources (for example whether it was true for everyone at the time). Pick statements about the world, not dates or arithmetic."
-            : "\(bullets). Each one (do not start with the word \"Claim\"): in bold, the claim in a few words close to the text's own; then one short sentence on what to check and where (for example official figures).",
+            : "\(bullets). Each one (do not start with the word \"Claim\"): in bold, the claim in a few words close to the text's own; then one short sentence on what to check and where (for example official figures), keeping the text's own words for any amount (write \"cut in half\", never \"50 percent\").",
         "## \(h[3])",
         history
             ? "\(bullets): the groups of people the speaker talks to or about, and what the text says about them or asks of them. Do not write that the text does not say; name who it addresses."
@@ -149,7 +150,7 @@ func buildPrompt(_ text: String, lang: Lang, level: Level = .balanced, mode: Mod
         "## \(h[4])",
         history
             ? "\(terms): **term**: its plain meaning. Choose old-fashioned, formal or unusual words and phrases from the text first, the ones a student today would not know. Only terms that appear in the text."
-            : "\(terms): **term**: its plain meaning. Only terms that appear in the text.",
+            : "\(terms): **term**: what it is or means, in everyday words (never just the text's own words again). Pick the words a 12-year-old might not know, from the text or from your explainer (for example \"statutory\", \"consultation\", \"storeys\"). Only terms that appear in the text or in your explainer.",
         "## \(h[5])",
         history
             ? "\(bullets): questions a student could ask or look up to understand the text and its time better."

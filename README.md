@@ -19,6 +19,29 @@ It works in English, Italian, French, Spanish and German, and never takes sides 
 - **Demo video:** _link added at submission_
 - Built for the Firebase **#BuildHybridAI 2026** hackathon: web (Chrome) + Chrome extension + iPhone, one hybrid design.
 
+## For judges: 2 minutes
+
+1. **Open the live site** in desktop Chrome: https://plain-politics-app.web.app. Click a sample, press **Explain it**.
+   The sticker says where it ran (**Ran on your device · Gemini Nano** or **Ran in the cloud**) and how long it took.
+2. **See each route.** Under **Run on**, pick **Cloud only** or **This device only** (on-device needs Chrome's
+   built-in model: press **Set up on-device AI** once). Pick **Letter to my MP** with **Cloud only**: the privacy
+   guard stops it on the device, and nothing is sent. Turn Wi-Fi off and reload: it still works, on the device.
+3. **Watch the hybrid call in DevTools** (Console): every explainer logs
+   `[Firebase AI Logic] mode=… inferenceSource=…`, the mode asked for and where the answer really ran.
+4. **Where Firebase AI Logic is called:**
+   - [`src/firebase.ts#L93`](src/firebase.ts#L93): `getGenerativeModel(ai, { mode, inCloudParams, onDeviceParams })`,
+     one model for both places;
+   - [`src/route.ts#L23`](src/route.ts#L23): which mode each text gets (privacy, offline, length, availability), with tests;
+   - [`src/main.ts#L917`](src/main.ts#L917): the streamed call, and [`#L942`](src/main.ts#L942): if Gemini Nano fails
+     partway through an Auto run, the cloud takes over (never for a text with personal details);
+   - iPhone: [`Engine.swift#L135`](ios/PlainPolitics.swiftpm/Sources/App/Engine.swift#L135):
+     `hybridModel(primary: SystemLanguageModel.default, secondary: gemini)`.
+5. **Accuracy you can rerun:** [`tools/accuracy.mjs`](tools/accuracy.mjs) checks that every number in each explainer
+   appears in the original (results under [Quality](#quality)).
+
+Running it locally needs an App Check debug token registered in a Firebase project (Firebase AI Logic requires App
+Check): see [Run it yourself](#run-it-yourself).
+
 ## What it does
 
 | Feature | What it does | Runs |
@@ -59,7 +82,7 @@ Firebase AI Logic as the hybrid `mode`:
 |---|---|---|
 | Offline | Device only; if it can't run, a clear message and nothing is lost | `only_on_device` |
 | Personal details found (privacy guard) | Device only; if the device can't run it, nothing is sent | `only_on_device` |
-| "Auto", on-device model ready | Runs on the device; cloud only if the device fails | `prefer_on_device` |
+| "Auto", on-device model ready | Runs on the device; if Gemini Nano is unavailable or fails partway, the cloud takes over | `prefer_on_device` (+ the page's own fallback) |
 | "Auto", model not downloaded yet | Cloud answers now; the user can download the model with one button | `prefer_on_device` |
 | "Auto", text longer than the device limit | Straight to the cloud | `only_in_cloud` |
 | "Auto", no on-device AI in this browser or language | Cloud | `only_in_cloud` |
@@ -111,18 +134,22 @@ The iPhone app uses **Firebase AI Logic** (hybrid, with Apple's on-device model)
 
 - **Lighthouse** on the live site: **100 / 100 / 100 / 100** (performance, accessibility, best practices, SEO) on
   mobile and on desktop; first paint 0.9 s on a simulated slow phone.
-- **41 unit tests** (routing including offline, privacy guard, prompts in every language, Spot the spin, YouTube
+- **46 unit tests** (routing including offline, privacy guard, prompts in every language, Spot the spin, YouTube
   links, error messages, reading age, safe Markdown, giving up on a silent answer) and an end-to-end browser check
-  of every feature before each release. The iPhone app's core logic has 72 checks of its own, on the same cases.
+  of every feature before each release. The iPhone app's core logic has 90 checks of its own, on the same cases.
 - **Accuracy, measured** ([`tools/accuracy.mjs`](tools/accuracy.mjs)): the prompt tells the model to copy every
   number exactly as the text writes it, so the check explains each built-in sample and looks up every number of the
   explainer in the original. On 26 Nov 2026, two runs (22 explainers: Today, History and Compare) found **120 of 123
   numbers** in the original. The 3 others were all the same kind: in a "what to check" line, "cut in half" became
   "50 percent" and "one shop in every four" became "25 percent". Correct sums, but not the text's own words. So the
-  prompt now says to keep words like "half" and "one in four" as words, and the next run found **48 of 48**. Every
-  explainer in all three runs had all its sections, and a hand check of the first run found each number attached to
-  the right thing. Its limits: it checks numbers, not meaning, and headless Chrome has no Gemini Nano, so it measures
-  the cloud model. To run it: start `npm run dev` (with App Check set up as in [Run it yourself](#run-it-yourself)),
+  prompt now says to keep words like "half" and "one in four" as words, and repeats it in the claims instruction,
+  where the slips happened (one more "half" became "50" in a later run). With the final prompt, two runs (22
+  explainers) found **119 of 119**. Every explainer in every run had all its sections, and a hand check of the first
+  run found each number attached to the right thing. Its limits:
+  it checks numbers, not meaning, and headless Chrome has no Gemini Nano, so it measures the cloud model.
+- **Plainer, measured**: with the app's own reading-age formula (each point counted as a sentence), the explainers of
+  the six single-text samples average a reading age of **12.0**, against **14.7** for the originals (Lincoln's speech:
+  16 → 11). A plain original stays plain (the Campaign speech is already 9). To run it: start `npm run dev` (with App Check set up as in [Run it yourself](#run-it-yourself)),
   then `node tools/accuracy.mjs`. It needs Chrome, and it cannot run against the live site, whose reCAPTCHA check
   blocks headless browsers.
 - **Never stuck waiting**: if the cloud goes silent mid-answer, the page gives up after 25 seconds and tries again
@@ -138,7 +165,7 @@ Needs Node.js 22.18 or newer (the tests run the TypeScript files directly).
 
 ```bash
 npm install
-npm test        # 41 unit tests
+npm test        # 46 unit tests
 npm run dev     # http://localhost:5173
 ```
 
@@ -211,7 +238,7 @@ Where it runs follows the website's rules
 - **Never stuck waiting.** A cloud request gives up after 30 seconds of silence. A busy or silent cloud is tried three
   times: twice as a stream, then once asking for the whole answer at once (same idea as the website).
 - **App Check** protects the cloud calls (the debug provider in development builds).
-- The privacy guard, Spot the spin and the routing are plain Swift with no Firebase, checked by 72 tests on the same
+- The privacy guard, Spot the spin and the routing are plain Swift with no Firebase, checked by 90 tests on the same
   cases as the website ([`CoreTests/main.swift`](ios/PlainPolitics.swiftpm/CoreTests/main.swift)).
 
 **Run it.** The app targets iOS 26 and was built and tested with Xcode 27.2 and the iOS 27.2 Simulator. Open

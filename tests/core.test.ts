@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { chooseRoute } from "../src/route.ts";
+import { chooseRoute, shouldFallBackToCloud } from "../src/route.ts";
 import { renderMarkdown, escapeHtml, firstLine } from "../src/markdown.ts";
 import { buildPrompt, buildComparePrompt, HEADINGS } from "../src/prompt.ts";
 
@@ -49,6 +49,37 @@ test("model still downloading: auto stays device-first (Firebase falls back itse
   assert.equal(r.ok && r.mode, "prefer_on_device");
 });
 
+test("device-only before the model is downloaded: a clear message now, not a long wait", () => {
+  for (const deviceStatus of ["downloadable", "downloading"] as const) {
+    const r = chooseRoute({ ...base, choice: "device", deviceStatus });
+    assert.equal(r.ok, false);
+    assert.match(!r.ok ? r.reason : "", /choose Auto/);
+  }
+  const ready = chooseRoute({ ...base, choice: "device" });
+  assert.equal(ready.ok && ready.mode, "only_on_device");
+});
+
+test("reading age: a heading without a full stop ends its sentence", async () => {
+  const { readingAge } = await import("../src/readability.ts");
+  // Six headings, each over one short sentence, like a press release or an explainer.
+  const parts = ["What it says", "Who it affects", "What happens next", "Where the money comes from", "Who disagrees", "How to take part"];
+  const said = "The council will build homes.";
+  const withBreaks = readingAge(parts.map((h) => `${h}\n\n${said}`).join("\n\n"))!;
+  const glued = readingAge(parts.map((h) => `${h} ${said}`).join(" "))!;
+  assert.ok(withBreaks.age < glued.age, `${withBreaks.age} < ${glued.age}`);
+});
+
+test("device fails mid-run: the cloud takes over only in Auto, online, once; personal texts never", () => {
+  const ok = { mode: "prefer_on_device", ranOnDevice: true, online: true, alreadyFellBack: false } as const;
+  assert.equal(shouldFallBackToCloud(ok), true);
+  assert.equal(shouldFallBackToCloud({ ...ok, mode: "only_on_device" }), false, "personal text or 'this device only'");
+  assert.equal(shouldFallBackToCloud({ ...ok, ranOnDevice: false }), false, "a cloud error is not a device failure");
+  assert.equal(shouldFallBackToCloud({ ...ok, online: false }), false);
+  assert.equal(shouldFallBackToCloud({ ...ok, alreadyFellBack: true }), false);
+  const personal = chooseRoute({ ...base, personal: true });
+  assert.equal(personal.ok && personal.mode, "only_on_device");
+});
+
 test("markdown renderer escapes HTML from the model", () => {
   const html = renderMarkdown('## Title\n- <img src=x onerror=alert(1)> **bold**');
   assert.ok(!html.includes("<img"));
@@ -94,7 +125,8 @@ test("History: figures of speech are the speaker's words, including in the one-s
 
 test('numbers rule: copy numbers exactly, keep "half" and "one in four" as words (accuracy check, 26 Nov)', () => {
   for (const p of [buildPrompt("Some text", "en"), buildPrompt("Some text", "it", "balanced", "history"), buildComparePrompt("A", "B", "en")]) {
-    assert.ok(p.includes("never work out new numbers") && p.includes('keep words like "half" or "one in four" as words, never as percentages'));
+    assert.ok(p.includes("never work out new numbers") && p.includes('digits stay digits (years and dates too), and words like "half" or "one in four" stay words, never percentages'));
+    assert.ok(p.includes("Say who says each thing") || p.includes("Say which text says each thing"));
   }
 });
 

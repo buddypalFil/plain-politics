@@ -202,6 +202,7 @@ export async function checkClaim(claim: string, lang: Lang, langName: string, cl
     "**Kind of claim:** one short sentence: a fact that can be checked, a prediction, a promise, or an opinion.",
     "**How to check it:**",
     "- 2 or 3 bullet points: the kind of official or independent source that would have the evidence (for example a national statistics office, parliament records, the official budget, an independent fact-checker) and exactly what to look for there.",
+    "For a claim about the UK, name UK sources (for example the Office for National Statistics, the House of Commons Library, GOV.UK, the local council's website, or Full Fact). Use everyday words: say \"the council\", not \"the municipal authority\".",
     "Be neutral: do not take sides, praise or criticise any party or person.",
     "",
     `CLAIM: "${safeClaim}"`,
