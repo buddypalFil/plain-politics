@@ -190,9 +190,10 @@ function addClaimButtons(lang: Lang): void {
     // "**Claim**: Check …" shows as the claim in italics, then the note on its own line, without the colon.
     const lead = li.querySelector(":scope > strong:first-child");
     if (lead) {
-      lead.textContent = (lead.textContent ?? "").replace(/[\s:]+$/, "");
+      const claimText = (lead.textContent ?? "").replace(/[\s:]+$/, "");
+      lead.textContent = claimText.charAt(0).toUpperCase() + claimText.slice(1); // a headline starts with a capital
       const next = lead.nextSibling;
-      if (next?.nodeType === Node.TEXT_NODE) next.textContent = (next.textContent ?? "").replace(/^\s*[.:\-–—]\s*/, "");
+      if (next?.nodeType === Node.TEXT_NODE) next.textContent = " " + (next.textContent ?? "").replace(/^\s*[.:\-–—]\s*/, "");
     }
     const b = document.createElement("button");
     b.type = "button";
@@ -318,7 +319,7 @@ function showGauge(original: string, explainer: string, lang: Lang): void {
   // Only show "a → b" when the explainer is easier; an already plain text gets a note instead of a step up.
   $("g-cap").innerHTML = b.age < a.age
     ? `<s title="The original">${a.age}</s> → <b title="This explainer">${b.age}</b>`
-    : `<b title="This explainer">${b.age}</b><small class="g-note">The original was already easy to read (${a.age}).</small>`;
+    : `<small class="g-note">The original was already easy to read (reading age ${a.age}), so the explainer keeps it simple.</small>`;
   $("gauge").setAttribute("aria-label", `Reading age: the original needs ${a.age}, this explainer ${b.age}`);
   gauge.hidden = false;
 }
@@ -362,7 +363,7 @@ function renderChoices(): void {
       ? "A speech, declaration or letter from the past. History mode adds how it tries to persuade and its historical context. Try a real speech:"
       : comparing()
         ? "Two texts on the same topic, for example two parties' plans. See where they agree and differ, without being told which is better. Or try a made-up pair:"
-        : "A news article, a speech, a bill or a manifesto. Or try a made-up sample:";
+        : "Paste any political text, or try a made-up sample:";
   input2.hidden = $("label-a").hidden = $("label-b").hidden = !comparing();
   const lede = output.querySelector(".empty-lede");
   if (lede) {
@@ -442,7 +443,12 @@ function renderSamples(): void {
     box.appendChild(b);
   }
 }
-const updateCount = () => (charCount.textContent = (input.value.length + (comparing() ? input2.value.length : 0)).toLocaleString("en-GB"));
+const updateCount = () => {
+  const n = input.value.length + (comparing() ? input2.value.length : 0);
+  charCount.textContent = n.toLocaleString("en-GB");
+  // "0 characters" says nothing: the count shows once there is text.
+  charCount.parentElement!.hidden = n === 0;
+};
 for (const box of [input, input2]) {
   box.addEventListener("input", () => {
     updateCount();
@@ -458,7 +464,7 @@ function updatePrivacy(): void {
   redactBtn.hidden = found.length === 0;
   privacyText.textContent =
     found.length === 0
-      ? "Privacy guard is on: personal details never go to the cloud."
+      ? "Privacy guard on: personal details never go to the cloud."
       : deviceStatus === "available"
         ? `Found ${describeFindings(found)}. This text will only run on your device.`
         : `Found ${describeFindings(found)}. Personal details never go to the cloud, so remove them first.`;
@@ -815,6 +821,12 @@ async function explainOnce(): Promise<void> {
   if (!route.ok) {
     showError(route.reason);
     redactSendBtn.hidden = !route.privacy;
+    // A clear "stopped" frame, in place of the example front page (see style.css).
+    badge.hidden = !route.privacy;
+    if (route.privacy) {
+      badge.className = "stamp stopped";
+      badge.textContent = "Stopped by the privacy guard · nothing sent";
+    }
     return;
   }
 
@@ -831,6 +843,8 @@ async function explainOnce(): Promise<void> {
   // Their names show straight away as faint outlines, so the wait never looks like an empty page.
   output.innerHTML = pendingSections("", runSections);
   output.lang = lang; // so long words hyphenate in the right language
+  // On a phone the explainer is far below the button: scroll to it so pressing Explain visibly does something.
+  if (matchMedia("(max-width: 860px)").matches && !embedded) $("out-panel").scrollIntoView({ behavior: "smooth", block: "start" });
   output.classList.add("streaming");
   srStatus.textContent = compare ? "Comparing the texts…" : "Explaining the text…";
 
@@ -894,7 +908,8 @@ async function explainOnce(): Promise<void> {
           throw e;
         }
         output.innerHTML = pendingSections("", runSections);
-        routeNote.textContent = `Google's cloud AI is busy. Trying again (${attempt + 1} of ${MAX_ATTEMPTS})…`;
+        routeNote.textContent = "The cloud is slow right now. Still working…";
+        console.info(`Google's cloud AI is busy. Trying again (${attempt + 1} of ${MAX_ATTEMPTS}).`);
         await new Promise((r) => setTimeout(r, 1500 * attempt));
       }
     }

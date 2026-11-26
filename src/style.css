@@ -60,7 +60,7 @@ button, select, textarea { font: inherit; color: inherit; }
 }
 
 /* ---------- Masthead ---------- */
-.topbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--ink); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-2); }
+.topbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--ink); font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-2); }
 .topbar > * { flex: 1; }
 .strap { text-align: center; }
 .pill { text-align: right; color: var(--muted); }
@@ -68,7 +68,7 @@ button, select, textarea { font: inherit; color: inherit; }
 .pill.ready { color: var(--ink); }
 .pill.ready::before { background: var(--ink); border-color: var(--ink); }
 .pill.cloud { color: var(--cloud); }
-.mast { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; column-gap: 24px; text-align: center; padding: 16px 0 12px; }
+.mast { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; column-gap: 24px; text-align: center; padding: 10px 0 8px; }
 .mast .tagline, .mast .hybrid-line { grid-column: 1 / -1; }
 .hybrid-line { margin: 6px 0 0; font: 600 11px/1.4 var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 .ear { width: 168px; border: 1px solid var(--ink); padding: 8px 10px; font-size: 11px; line-height: 1.4; color: var(--ink-2); text-align: center; }
@@ -107,7 +107,7 @@ h2 { font: 700 22px/1.15 var(--serif); margin: 0 0 6px; }
 .chip { border: 0; background: none; padding: 0; cursor: pointer; font: 500 15px/1.4 var(--serif); color: var(--ink); text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 4px; }
 .chip:hover { text-decoration-color: var(--ink); }
 
-textarea { display: block; width: 100%; height: 150px; min-height: 120px; resize: vertical; border: 1px solid var(--line); border-radius: 0; padding: 12px 14px; background: var(--panel); color: var(--ink); font: 400 15px/1.55 var(--serif); }
+textarea { display: block; width: 100%; height: 128px; min-height: 110px; resize: vertical; border: 1px solid var(--line); border-radius: 0; padding: 12px 14px; background: var(--panel); color: var(--ink); font: 400 15px/1.55 var(--serif); }
 textarea:focus { border-color: var(--ink); outline: none; }
 /* Compare: Text A and Text B, each with a small label; the boxes get shorter so both fit */
 .tlabel { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font: 800 11px/1 var(--sans); letter-spacing: .16em; text-transform: uppercase; color: var(--ink); }
@@ -123,10 +123,10 @@ textarea:focus { border-color: var(--ink); outline: none; }
 .link-btn { border: 0; background: none; color: inherit; font: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; padding: 0; }
 
 /* Ballot: how much detail, mark one */
-.ballot { margin-top: 18px; border: 2px solid var(--ink); background: var(--panel); padding: 12px 14px 6px; }
+.ballot { margin-top: 14px; border: 2px solid var(--ink); background: var(--panel); padding: 12px 14px 6px; }
 .ballot-head { display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; margin-bottom: 6px; }
 .ballot-head span:last-child { color: var(--muted); }
-#level-seg button { display: flex; width: 100%; justify-content: space-between; align-items: center; gap: 12px; text-align: left; border: 0; border-top: 1px solid var(--ink); background: none; padding: 7px 0; cursor: pointer; }
+#level-seg button { display: flex; width: 100%; justify-content: space-between; align-items: center; gap: 12px; text-align: left; border: 0; border-top: 1px solid var(--ink); background: none; padding: 5px 0; cursor: pointer; }
 #level-seg button > span { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 10px; }
 #level-seg b { display: block; font: 700 18px/1.1 var(--serif); }
 #level-seg small { display: block; font: 500 12px/1.3 var(--sans); color: var(--muted); }
@@ -185,7 +185,7 @@ button.secondary:hover { background: var(--accent-soft); }
 /* Done: a die-cut sticker (white edge, soft shadow) slaps onto the page, then a shine runs across it.
    It keeps its own paper colours in dark mode too, like a real sticker. */
 .stamp.sticker { position: relative; overflow: hidden; align-items: center; flex-wrap: nowrap; gap: 11px; margin-bottom: 10px; padding: 9px 16px 9px 11px;
-  border: 3px solid #fff; border-radius: 14px; background: #fffdf8; color: #111;
+  border: 3px solid #fff; border-radius: 14px; background: #f6f1e7; color: #111;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, .1), 0 8px 18px -8px rgba(0, 0, 0, .45), 0 2px 4px rgba(0, 0, 0, .12);
   transform: rotate(-2.5deg); animation: slap .55s cubic-bezier(.2, .9, .3, 1.35) both; }
 .stamp.sticker.cloud { color: #2f3a4a; }
@@ -453,6 +453,39 @@ body:not([data-mode="today"]) .empty .example-stamp { display: none; }
 .src-actions .link-btn { font: 600 12.5px var(--sans); }
 .page-status { margin: 10px 0 0; font: 500 13px/1.4 var(--sans); color: var(--muted); }
 
+/* ---------- Second review (25 Nov): fixes for the moments a demo shows ---------- */
+/* The two ears the same height, framing the nameplate */
+@media screen and (min-width: 861px) { body:not(.embed) .mast .ear { align-self: stretch; display: flex; flex-direction: column; justify-content: center; } }
+/* Claims: no stray first divider; when one claim opens, the others stay a tidy row */
+.output .card:nth-child(3) ul { display: flex; flex-wrap: wrap; clip-path: inset(0 0 0 1px); }
+.output .card:nth-child(3) li { flex: 1 1 210px; }
+.output .card:nth-child(3) li:has(.claim-drawer) { flex-basis: 100%; }
+/* No jump when the working stamp turns into the sticker */
+.stamp.running { min-height: 56px; margin-bottom: 10px; align-items: center; }
+/* Stopped by the privacy guard: a rust stamp, and the example front page makes way */
+.stamp.stopped { border-color: var(--warn); color: var(--warn); }
+#out-panel:has(#error:not([hidden])) .output > .empty, #out-panel:has(#error:not([hidden])) .example-stamp { display: none; }
+/* Balanced headlines and no one-word last lines */
+.output .card:nth-child(1) p { text-wrap: balance; }
+.output li, .output p, .spin-def, .empty-lede { text-wrap: pretty; }
+/* The reading age and the actions side by side, Share as the main action */
+.out-foot { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); align-items: end; column-gap: 40px; }
+.out-foot .actions { grid-column: -2 / -1; justify-content: flex-end; }
+#share { padding: 6px 12px; border: 1.5px solid var(--ink); text-decoration: none; }
+/* Spot the spin: the marked text fades out at the bottom instead of a hard cut */
+.clip { max-height: 380px; }
+.clip::after { content: ""; position: sticky; bottom: -12px; display: block; height: 44px; margin: 0 -14px -12px; background: linear-gradient(rgba(0, 0, 0, 0), var(--panel)); pointer-events: none; }
+/* Side panel: show what will appear instead of a blank */
+body.embed[data-mode] .empty .ghost { display: grid; }
+/* Route strip: the skipped hop is dashed, not a hole */
+.route .l.skip { background: repeating-linear-gradient(90deg, var(--line) 0 3px, transparent 3px 7px); }
+/* History's extra sections in two newspaper columns */
+.output .card:nth-child(n+7) ul { columns: 2 280px; column-gap: 32px; column-rule: 1px solid var(--line); }
+.output .card:nth-child(n+7) li { break-inside: avoid; }
+/* The example sits on a slip, so it reads as a clipping, not your result */
+.empty .example { background: var(--panel); border: 1px solid var(--line); padding: 4px 24px 12px; }
+.empty .example .card:nth-child(1) p { font-size: 34px; }
+
 /* ---------- Phones and narrow windows ---------- */
 @media screen and (max-width: 860px) {
   .wrap { padding: 0 18px; }
@@ -485,6 +518,19 @@ body:not([data-mode="today"]) .empty .example-stamp { display: none; }
   .output .card:nth-child(3) li + li { border-top: 1px solid var(--line); padding-top: 10px; }
   .ghost li:first-child { font-size: 22px; }
   .stamp.sticker small { font-size: 9.5px; letter-spacing: .06em; }
+  textarea { height: 140px; min-height: 120px; }
+  .output .card:nth-child(3) ul { clip-path: none; }
+  .output .card:nth-child(3) li { flex-basis: 100%; }
+  .out-foot { grid-template-columns: 1fr; }
+  .out-foot .actions { grid-column: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px; }
+  .act { text-align: left; }
+  #share { grid-column: 1 / -1; text-align: center; }
+  .act.again { grid-column: 1 / -1; }
+  .claim-kind .ck-label { white-space: nowrap; }
+  .output .card:nth-child(n+7) ul { columns: 1; }
+  .hybrid-line { text-wrap: balance; }
+  .empty .example { padding: 4px 14px 10px; }
+  .empty .example .card:nth-child(1) p { font-size: 26px; }
   .g-cap { font-size: 36px; }
 }
 
@@ -516,7 +562,7 @@ body:not([data-mode="today"]) .empty .example-stamp { display: none; }
 .embed .foot { margin-top: 20px; padding-bottom: 20px; }
 @media (prefers-color-scheme: dark) { .embed .logo { border-radius: 22%; box-shadow: 0 0 0 1px var(--line); } }
 
-@media (prefers-color-scheme: dark) { .stamp.sticker { background: #f1ece2; border-color: #f1ece2; } }
+@media (prefers-color-scheme: dark) { .stamp.sticker { background: #efe9dd; border-color: #fff; } }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
@@ -552,6 +598,7 @@ body:not([data-mode="today"]) .empty .example-stamp { display: none; }
   .stamp.sticker { box-shadow: none; border-color: #cfc8ba; }
   .stamp.sticker::after { display: none; }
   .clip { max-height: none; overflow: visible; border: 0; padding: 0; background: none; font-size: 10pt; }
+  .clip::after { display: none; }
   .spin, .out-foot { break-inside: avoid; }
   .foot { margin-top: 14px; padding: 0; }
 }

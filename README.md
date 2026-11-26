@@ -17,7 +17,7 @@ It works in English, Italian, French, Spanish and German, and never takes sides 
 - **Live site:** https://plain-politics-app.web.app (best in desktop Chrome; installable, works offline)
 - **iPhone app:** native SwiftUI, with Apple's on-device model first and Gemini as backup ([see below](#iphone-app))
 - **Demo video:** _link added at submission_
-- Built for the Firebase **#BuildHybridAI 2026** hackathon (web / Chrome track).
+- Built for the Firebase **#BuildHybridAI 2026** hackathon: web (Chrome) + Chrome extension + iPhone, one hybrid design.
 
 ## What it does
 

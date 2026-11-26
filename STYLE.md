@@ -40,7 +40,7 @@ app takes no side. (Chosen 22 Nov 2026 from six directions; it replaced "Ink & P
 - **Top bar:** date · PRIVATE · NEUTRAL · PLAIN · on-device status, over a 1 px ink rule.
 - **Masthead:** "Plain Politics" centred (70 px), italic tagline, then one small-caps line saying how it runs
   ("ON YOUR DEVICE WHEN IT CAN · IN THE CLOUD ONLY WHEN IT MUST · ALWAYS SAYS WHICH"), then a double rule.
-  Ears: "PRIVATE FIRST" and "TODAY'S FORECAST". (25 Nov 2026, after a study: the first screen must say hybrid.)
+  Ears: "PRIVATE FIRST" and "FREE TO READ" (the joke forecast went: it read as cynical for a neutral app). (25 Nov 2026, after a study: the first screen must say hybrid.)
 - **Section bar:** TODAY | HISTORY tabs (selected = 2 px ink underline) and MY LIBRARY.
 - **Two columns (desktop):** left 380 px "Your text" (samples as underlined links, the text box, privacy
   line, ballot with one line per level, EXPLAIN IT, then Language / Run on / Reading as ruled rows); right "The
@@ -71,6 +71,9 @@ app takes no side. (Chosen 22 Nov 2026 from six directions; it replaced "Ink & P
 - **Buttons:** primary = solid ink, square corners, small caps. Secondary = 1.5 px ink outline. Actions =
   underlined small caps.
 - **Corners:** square everywhere. No shadows. The one exception is the sticker.
+- **Example front page:** before the first Today explainer, a real explainer of the made-up Council sample on a slip
+  (panel colour, hairline border), under a rust "EXAMPLE FRONT PAGE" stamp. A privacy stop hides it and shows a rust
+  "STOPPED BY THE PRIVACY GUARD · NOTHING SENT" stamp instead.
 
 ## Icon
 "Full stop": an ink rounded square; four paper lines of uneven length curve into one line ending in a rust
