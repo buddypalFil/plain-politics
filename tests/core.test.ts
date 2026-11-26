@@ -84,6 +84,14 @@ test("prompt uses the headings of the chosen language", () => {
   assert.ok(p.includes("Italian"));
 });
 
+test("History: figures of speech are the speaker's words, including in the one-sentence headline", () => {
+  const hist = buildPrompt("Some text", "en", "balanced", "history");
+  assert.ok(hist.includes("figure of speech") && hist.includes("including the first sentence") && hist.includes("never that a war happened"));
+  assert.ok(hist.includes("Report the speaker's view, not facts: start with the speaker"));
+  assert.ok(!buildPrompt("Some text", "en").includes("Report the speaker's view"));
+  assert.ok(!buildPrompt("Some text", "en").includes("figure of speech"));
+});
+
 test('numbers rule: copy numbers exactly, keep "half" and "one in four" as words (accuracy check, 26 Nov)', () => {
   for (const p of [buildPrompt("Some text", "en"), buildPrompt("Some text", "it", "balanced", "history"), buildComparePrompt("A", "B", "en")]) {
     assert.ok(p.includes("never work out new numbers") && p.includes('keep words like "half" or "one in four" as words, never as percentages'));

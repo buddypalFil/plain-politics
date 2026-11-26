@@ -111,7 +111,7 @@ The iPhone app uses **Firebase AI Logic** (hybrid, with Apple's on-device model)
 
 - **Lighthouse** on the live site: **100 / 100 / 100 / 100** (performance, accessibility, best practices, SEO) on
   mobile and on desktop; first paint 0.9 s on a simulated slow phone.
-- **40 unit tests** (routing including offline, privacy guard, prompts in every language, Spot the spin, YouTube
+- **41 unit tests** (routing including offline, privacy guard, prompts in every language, Spot the spin, YouTube
   links, error messages, reading age, safe Markdown, giving up on a silent answer) and an end-to-end browser check
   of every feature before each release. The iPhone app's core logic has 72 checks of its own, on the same cases.
 - **Accuracy, measured** ([`tools/accuracy.mjs`](tools/accuracy.mjs)): the prompt tells the model to copy every
@@ -138,7 +138,7 @@ Needs Node.js 22.18 or newer (the tests run the TypeScript files directly).
 
 ```bash
 npm install
-npm test        # 40 unit tests
+npm test        # 41 unit tests
 npm run dev     # http://localhost:5173
 ```
 

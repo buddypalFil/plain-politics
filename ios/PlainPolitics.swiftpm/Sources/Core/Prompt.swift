@@ -122,7 +122,7 @@ func buildPrompt(_ text: String, lang: Lang, level: Level = .balanced, mode: Mod
         "- Copy every number, percentage and amount exactly as the text writes it, and never work out new numbers: keep words like \"half\" or \"one in four\" as words, never as percentages. Write the words around a number in \(lang.name) too (translate words like \"miliardi\" or \"Millionen\").",
     ]
     // Same rules as the web (src/prompt.ts), kept in step.
-    if history { lines.append("- When the speaker uses a figure of speech (for example calling a campaign a war), report it as the speaker's words, not as a fact.") }
+    if history { lines.append("- When the speaker uses a figure of speech (for example calling a campaign a war, or themselves a soldier), report it as the speaker's words, not as a fact, in every section including the first sentence: write \"the speaker calls it a war\", never that a war happened.") }
     lines += [
         "- If the text does not say something, write that it does not say it.",
         "- Use short sentences and everyday words.",
@@ -133,7 +133,9 @@ func buildPrompt(_ text: String, lang: Lang, level: Level = .balanced, mode: Mod
         "",
         "Answer in Markdown with exactly these \(history ? "eight" : "six") sections, in this order:",
         "## \(h[0])",
-        "One sentence a 12-year-old would understand.",
+        history
+            ? "One sentence a 12-year-old would understand. Report the speaker's view, not facts: start with the speaker (for example \"The speaker says…\"), and put words they use as a figure of speech, like \"war\" or \"soldier\", in quotation marks."
+            : "One sentence a 12-year-old would understand.",
         "## \(h[1])",
         "\(bullets) with the main points.",
         "## \(h[2])",

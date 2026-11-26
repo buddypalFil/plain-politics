@@ -95,7 +95,7 @@ do {
     expect(t.contains("in bold, the claim in a few words close to the text's own; then one short sentence on what to check and where"), "claims: bold lead + one sentence, like the web")
     expect(t.contains("Write the words around a number in Italian too") && !t.contains("figure of speech"), "numbers rule; no history-only rule in Today")
     expect(t.contains("keep words like \"half\" or \"one in four\" as words, never as percentages"), "numbers rule: half and one in four stay words")
-    expect(h.contains("in bold, a statement the speaker presents") && h.contains("figure of speech"), "history claims and figure-of-speech rule")
+    expect(h.contains("in bold, a statement the speaker presents") && h.contains("figure of speech") && h.contains("including the first sentence") && h.contains("Report the speaker's view, not facts") && !t.contains("Report the speaker's view"), "history claims and figure-of-speech rule, headline included")
 }
 
 // Sections
