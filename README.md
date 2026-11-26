@@ -113,7 +113,17 @@ The iPhone app uses **Firebase AI Logic** (hybrid, with Apple's on-device model)
   mobile and on desktop; first paint 0.9 s on a simulated slow phone.
 - **39 unit tests** (routing including offline, privacy guard, prompts in every language, Spot the spin, YouTube
   links, error messages, reading age, safe Markdown, giving up on a silent answer) and an end-to-end browser check
-  of every feature before each release. The iPhone app's core logic has 67 checks of its own, on the same cases.
+  of every feature before each release. The iPhone app's core logic has 71 checks of its own, on the same cases.
+- **Accuracy, measured** ([`tools/accuracy.mjs`](tools/accuracy.mjs)): the prompt tells the model to copy every
+  number exactly as the text writes it, so the check explains each built-in sample and looks up every number of the
+  explainer in the original. On 26 Nov 2026 we ran it twice: across 22 explainers (Today, History and Compare),
+  **120 of 123 numbers** were in the original, and every explainer had all its sections. The 3 others were all the
+  same kind: in a "what to check" line, "cut in half" became "50 percent" and "one shop in every four" became
+  "25 percent". Correct sums, but the rule says to keep the text's own words, so they count as misses. A hand check of
+  the first run found each number attached to the right thing. Its limits: it checks numbers, not meaning, and
+  headless Chrome has no Gemini Nano, so it measures the cloud model. To run it: start `npm run dev` (with App Check set up as in [Run it yourself](#run-it-yourself)), then
+  `node tools/accuracy.mjs`. It needs Chrome, and it cannot run against the live site, whose reCAPTCHA check
+  blocks headless browsers.
 - **Never stuck waiting**: if the cloud goes silent mid-answer, the page gives up after 25 seconds and tries again
   ([`src/stream.ts`](src/stream.ts)).
 - **Rides out Google's busy spells**: when Gemini is overloaded it can send half an explainer and then a "high demand"
@@ -200,7 +210,7 @@ Where it runs follows the website's rules
 - **Never stuck waiting.** A cloud request gives up after 30 seconds of silence. A busy or silent cloud is tried three
   times: twice as a stream, then once asking for the whole answer at once (same idea as the website).
 - **App Check** protects the cloud calls (the debug provider in development builds).
-- The privacy guard, Spot the spin and the routing are plain Swift with no Firebase, checked by 67 tests on the same
+- The privacy guard, Spot the spin and the routing are plain Swift with no Firebase, checked by 71 tests on the same
   cases as the website ([`CoreTests/main.swift`](ios/PlainPolitics.swiftpm/CoreTests/main.swift)).
 
 **Run it.** The app targets iOS 26 and was built and tested with Xcode 27.2 and the iOS 27.2 Simulator. Open
@@ -243,6 +253,7 @@ src/markdown.ts       safe Markdown renderer
 src/samples.ts        made-up sample texts, public-domain speeches, Compare pairs
 public/sw.js          service worker for the offline app
 tests/                unit tests
+tools/accuracy.mjs    accuracy check: are the numbers in each explainer in the original?
 extension/            Chrome extension (side panel, right-click menu)
 ios/                  iPhone app (SwiftUI; Sources/App: screen and Firebase, Sources/Core: routing, privacy, spin)
 firestore.rules       database rules

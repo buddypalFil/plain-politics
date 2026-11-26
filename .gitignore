@@ -12,3 +12,4 @@ firebase-debug.log
 # Drafts for the hackathon submission (demo script, Devpost text)
 submission/
 .claude/
+accuracy-results.json
