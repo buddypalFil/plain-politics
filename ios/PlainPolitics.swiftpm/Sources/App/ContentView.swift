@@ -101,7 +101,7 @@ struct ContentView: View {
             Kicker(text: "Your text")
             Text(mode == .history
                  ? "A speech, declaration or letter from the past. Try a real speech:"
-                 : "A news article, a speech, a bill or a manifesto. Or try a made-up sample:")
+                 : "A news article, a speech, a bill or a manifesto. Or try a sample (made up, or one real press release):")
                 .font(.serif(15)).foregroundStyle(Color.muted)
             FlowRow(samples.filter { $0.history == (mode == .history) }) { s in
                 Button(s.label) { text = s.text; refusal = nil }

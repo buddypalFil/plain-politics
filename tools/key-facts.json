@@ -1,0 +1,491 @@
+{
+  "_about": "The facts a reader must not lose from each built-in sample, written before any explainer was checked. A fact counts as kept when any of its patterns appears in the explainer (case-insensitive), outside the Historical context section.",
+  "Council housing plan": [
+    {
+      "fact": "1,200 new homes",
+      "any": [
+        "1,?200"
+      ]
+    },
+    {
+      "fact": "on old industrial land near the river",
+      "any": [
+        "river",
+        "industrial"
+      ]
+    },
+    {
+      "fact": "at least 35% affordable",
+      "any": [
+        "35"
+      ]
+    },
+    {
+      "fact": "a £40 million loan",
+      "any": [
+        "40 million",
+        "£40"
+      ]
+    },
+    {
+      "fact": "selling two car parks",
+      "any": [
+        "car park"
+      ]
+    },
+    {
+      "fact": "buildings up to eight storeys",
+      "any": [
+        "eight[- ]stor",
+        "8[- ]stor",
+        "eight floors"
+      ]
+    },
+    {
+      "fact": "the opposition's flood worry",
+      "any": [
+        "flood"
+      ]
+    },
+    {
+      "fact": "a consultation until March",
+      "any": [
+        "consultation",
+        "march"
+      ]
+    }
+  ],
+  "Campaign speech": [
+    {
+      "fact": "bus routes cut in half",
+      "any": [
+        "half",
+        "halved"
+      ]
+    },
+    {
+      "fact": "one shop in four gone",
+      "any": [
+        "one (?:shop )?in (?:every )?four",
+        "1 in 4",
+        "quarter"
+      ]
+    },
+    {
+      "fact": "bring back the 12 and 40 routes",
+      "any": [
+        "\\b12\\b[\\s\\S]{0,40}\\b40\\b"
+      ]
+    },
+    {
+      "fact": "freeze business rates for small shops",
+      "any": [
+        "business rates"
+      ]
+    },
+    {
+      "fact": "a school place near home",
+      "any": [
+        "school"
+      ]
+    },
+    {
+      "fact": "Northvale pays more tax than it gets back",
+      "any": [
+        "tax"
+      ]
+    }
+  ],
+  "Bill summary": [
+    {
+      "fact": "rental companies need a council licence",
+      "any": [
+        "licen[cs]e"
+      ]
+    },
+    {
+      "fact": "licence removed after three rule breaks",
+      "any": [
+        "three (?:times|rule|break)",
+        "3 (?:times|rule|break)",
+        "twelve months",
+        "12 months"
+      ]
+    },
+    {
+      "fact": "top speed 15.5 mph",
+      "any": [
+        "15\\.5"
+      ]
+    },
+    {
+      "fact": "lights that switch on automatically",
+      "any": [
+        "light"
+      ]
+    },
+    {
+      "fact": "parking bays, fee up to £100",
+      "any": [
+        "100"
+      ]
+    },
+    {
+      "fact": "riders at least 16",
+      "any": [
+        "\\b16\\b",
+        "sixteen"
+      ]
+    },
+    {
+      "fact": "no helmet rule yet, review in 2028",
+      "any": [
+        "helmet"
+      ]
+    }
+  ],
+  "Minimum wage (real, GOV.UK)": [
+    {
+      "fact": "National Living Wage rises to £13.21",
+      "any": [
+        "13\\.21"
+      ]
+    },
+    {
+      "fact": "a 3.9 per cent rise",
+      "any": [
+        "3\\.9"
+      ]
+    },
+    {
+      "fact": "18-20 year olds: £11.27",
+      "any": [
+        "11\\.27"
+      ]
+    },
+    {
+      "fact": "16-17 year olds and apprentices: £8.31",
+      "any": [
+        "8\\.31"
+      ]
+    },
+    {
+      "fact": "from April 2027",
+      "any": [
+        "april 2027",
+        "2027"
+      ]
+    },
+    {
+      "fact": "the Government accepted the recommendations in full",
+      "any": [
+        "accept"
+      ]
+    },
+    {
+      "fact": "short of the two-thirds of median earnings target",
+      "any": [
+        "two[- ]thirds",
+        "median"
+      ]
+    },
+    {
+      "fact": "above expected inflation, protecting pay in real terms",
+      "any": [
+        "inflation",
+        "real terms"
+      ]
+    }
+  ],
+  "Lincoln, 1863": [
+    {
+      "fact": "a nation founded on all being created equal",
+      "any": [
+        "equal"
+      ]
+    },
+    {
+      "fact": "a civil war testing whether it can last",
+      "any": [
+        "civil war"
+      ]
+    },
+    {
+      "fact": "dedicating ground for soldiers who died",
+      "any": [
+        "battle ?field",
+        "cemetery",
+        "dedicat",
+        "grave"
+      ]
+    },
+    {
+      "fact": "the world will remember what they did",
+      "any": [
+        "remember"
+      ]
+    },
+    {
+      "fact": "the living must finish their work",
+      "any": [
+        "unfinished",
+        "finish",
+        "continue"
+      ]
+    },
+    {
+      "fact": "government of, by and for the people",
+      "any": [
+        "of the people",
+        "by the people",
+        "for the people"
+      ]
+    },
+    {
+      "fact": "a new birth of freedom",
+      "any": [
+        "freedom"
+      ]
+    }
+  ],
+  "Pankhurst, 1913": [
+    {
+      "fact": "votes for women",
+      "any": [
+        "suffrag",
+        "vote",
+        "voting"
+      ]
+    },
+    {
+      "fact": "she calls it revolution and civil war",
+      "any": [
+        "civil war",
+        "revolution"
+      ]
+    },
+    {
+      "fact": "she calls herself a soldier",
+      "any": [
+        "soldier"
+      ]
+    },
+    {
+      "fact": "the courts call her dangerous; a convict",
+      "any": [
+        "convict",
+        "prison",
+        "dangerous",
+        "penal servitude"
+      ]
+    },
+    {
+      "fact": "voters can change a legislature at an election",
+      "any": [
+        "election",
+        "legislature",
+        "vote (?:them|it) out"
+      ]
+    },
+    {
+      "fact": "without a vote: accept injustice or rise up",
+      "any": [
+        "submit",
+        "rebel",
+        "rise up",
+        "unjust",
+        "two evils"
+      ]
+    },
+    {
+      "fact": "the American Revolution as the example",
+      "any": [
+        "boston",
+        "tea party",
+        "taxation",
+        "independence"
+      ]
+    }
+  ],
+  "Roosevelt, 1941": [
+    {
+      "fact": "Japan attacked the United States",
+      "any": [
+        "japan"
+      ]
+    },
+    {
+      "fact": "on December 7th, 1941",
+      "any": [
+        "december 7",
+        "7 december",
+        "infamy"
+      ]
+    },
+    {
+      "fact": "the attack on Hawaii",
+      "any": [
+        "hawaii",
+        "pearl"
+      ]
+    },
+    {
+      "fact": "the US was at peace and still in talks",
+      "any": [
+        "peace",
+        "talk",
+        "conversation",
+        "negotiat"
+      ]
+    },
+    {
+      "fact": "many American lives lost",
+      "any": [
+        "lives",
+        "killed",
+        "died"
+      ]
+    },
+    {
+      "fact": "attacks across the Pacific",
+      "any": [
+        "malaya",
+        "hong kong",
+        "guam",
+        "philippine",
+        "wake",
+        "midway"
+      ]
+    },
+    {
+      "fact": "asks Congress to declare war",
+      "any": [
+        "declare",
+        "state of war"
+      ]
+    }
+  ],
+  "Two bus plans": [
+    {
+      "fact": "A: bring back routes 12 and 40",
+      "any": [
+        "\\b12\\b[\\s\\S]{0,40}\\b40\\b"
+      ]
+    },
+    {
+      "fact": "A: free fares for under-18s",
+      "any": [
+        "under[- ]?18"
+      ]
+    },
+    {
+      "fact": "A: adult fares capped at £2",
+      "any": [
+        "£2(?![.\\d])"
+      ]
+    },
+    {
+      "fact": "A: a 5p parking charge",
+      "any": [
+        "5p",
+        "5 ?pence"
+      ]
+    },
+    {
+      "fact": "A: £3 million from reserves",
+      "any": [
+        "3 million"
+      ]
+    },
+    {
+      "fact": "B: ten-year private contract",
+      "any": [
+        "ten[- ]year",
+        "10[- ]year"
+      ]
+    },
+    {
+      "fact": "B: fines for late buses",
+      "any": [
+        "fine"
+      ]
+    },
+    {
+      "fact": "B: on-demand minibuses",
+      "any": [
+        "minibus",
+        "on[- ]demand"
+      ]
+    },
+    {
+      "fact": "B: adult fares stay at £2.50",
+      "any": [
+        "2\\.50"
+      ]
+    },
+    {
+      "fact": "B: costs £1.5 million a year",
+      "any": [
+        "1\\.5 million"
+      ]
+    }
+  ],
+  "Two housing pledges": [
+    {
+      "fact": "A: 800 homes over four years",
+      "any": [
+        "\\b800\\b"
+      ]
+    },
+    {
+      "fact": "A: half for social rent",
+      "any": [
+        "social rent"
+      ]
+    },
+    {
+      "fact": "A: local people get first choice",
+      "any": [
+        "first choice",
+        "five years",
+        "5 years",
+        "local people"
+      ]
+    },
+    {
+      "fact": "A: double council tax on empty homes",
+      "any": [
+        "double",
+        "empty"
+      ]
+    },
+    {
+      "fact": "B: 2,000 homes in eight years",
+      "any": [
+        "2,?000"
+      ]
+    },
+    {
+      "fact": "B: building near the green belt",
+      "any": [
+        "green belt"
+      ]
+    },
+    {
+      "fact": "B: one in four affordable, 20% below market",
+      "any": [
+        "one in four",
+        "1 in 4",
+        "20 ?%",
+        "quarter"
+      ]
+    },
+    {
+      "fact": "B: builders pay for a school and health centre",
+      "any": [
+        "school",
+        "health"
+      ]
+    }
+  ]
+}

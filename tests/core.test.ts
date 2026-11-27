@@ -123,10 +123,17 @@ test("History: figures of speech are the speaker's words, including in the one-s
   assert.ok(!buildPrompt("Some text", "en").includes("figure of speech"));
 });
 
+test("Compare: 'Where they differ' gets more room and asks for the figures of each text", () => {
+  const p = buildComparePrompt("A", "B", "en");
+  assert.ok(p.includes("3 to 5 bullet points, one per topic") && p.includes("Give the figures each text states"));
+});
+
 test('numbers rule: copy numbers exactly, keep "half" and "one in four" as words (accuracy check, 26 Nov)', () => {
   for (const p of [buildPrompt("Some text", "en"), buildPrompt("Some text", "it", "balanced", "history"), buildComparePrompt("A", "B", "en")]) {
     assert.ok(p.includes("never work out new numbers") && p.includes('digits stay digits (years and dates too), and words like "half" or "one in four" stay words, never percentages'));
     assert.ok(p.includes("Say who says each thing") || p.includes("Say which text says each thing"));
+    if (!p.includes("TEXT A:")) assert.ok(p.includes("Never guess anyone's gender"));
+    if (!p.includes("TEXT A:") && !p.includes("speaker's view")) assert.ok(p.includes('write "he" or "she" only if the text says which') && !p.includes("Rowan"));
   }
 });
 
@@ -294,4 +301,10 @@ test("stall error gets a plain message", async () => {
   const m = friendlyMessage("stream stalled: no new text for 25 s", { deviceReady: false, online: true, dev: false });
   assert.match(m, /stopped answering partway through/);
   assert.match(friendlyMessage("Timeout has expired.", { deviceReady: false, online: true, dev: false }), /stopped answering/);
+});
+
+test("the one real sample says where it comes from and under which licence", async () => {
+  const { SAMPLES } = await import("../src/samples.ts");
+  const real = SAMPLES.find((s) => s.label.includes("real"));
+  assert.ok(real && /GOV\.UK/.test(real.text) && /Open Government Licence/.test(real.text));
 });

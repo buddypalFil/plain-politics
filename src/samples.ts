@@ -1,5 +1,5 @@
 // Sample texts so anyone can try the app in one click. The modern ones ("Today" mode) are
-// fictional on purpose: no real party, person or place. The History ones are real speeches
+// fictional on purpose (no real party, person or place), except one real GOV.UK press release (Open Government Licence). The History ones are real speeches
 // in the public domain (Lincoln 1863, Pankhurst 1913, Roosevelt 1941, a US government work).
 
 export interface Sample {
@@ -55,6 +55,45 @@ You can reach me at jordan.patel@example.com or on 07700 900123.
 
 Yours sincerely,
 Jordan Patel`,
+  },
+  {
+    // A real text (not made up): GOV.UK press release, Low Pay Commission, 28 Oct 2026. Contains public sector information
+    // licensed under the Open Government Licence v3.0. Main text only; the rates table is given as lines, same figures.
+    label: "Minimum wage (real, GOV.UK)",
+    text: `Press release: LPC recommendations take the National Living Wage to £13.21 (Low Pay Commission, GOV.UK, 28 October 2026; a real text, Open Government Licence v3.0)
+
+The Government has today announced increases to minimum wage rates from April 2027. The National Living Wage (NLW), the minimum wage rate for all workers aged 21 and over, will rise by 3.9 per cent to £13.21. The minimum wage for 18-20 year olds will increase to £11.27 and the rates for 16-17 year olds and apprentices will increase to £8.31, all of which are 3.9 per cent increases in line with that for the NLW.
+
+In announcing these increases, the Government has accepted in full the recommendations made by the Low Pay Commission.
+
+Although our recommendation for the NLW will not reach the two thirds of median earnings reference point set out in our remit, it still makes progress towards it. Commissioners remain committed to reaching the remit’s key reference point of two thirds of median earnings when economic conditions allow.
+
+While the rate recommended is below that needed to reach the reference point, it is above the range of inflation forecasts from April 2027 to March 2028, with additional allowance made for some upside risk. Therefore, we judge that it will protect the rate in real terms over the period specified in our remit.
+
+The rates announced today are:
+National Living Wage (21 and over): £13.21 from April 2027, an increase of 50p (3.9 per cent)
+18-20 Year Old Rate: £11.27, an increase of 42p (3.9 per cent)
+16-17 Year Old Rate: £8.31, an increase of 31p (3.9 per cent)
+Apprentice Rate: £8.31, an increase of 31p (3.9 per cent)
+Accommodation Offset: £11.53, an increase of 43p (3.9 per cent)
+
+Baroness Philippa Stroud, LPC Chair, said:
+
+“Discussions with workers and employers alike this year reflected the tough economic headwinds being faced across the economy. It has been challenging to come to a recommended increase that is both fair to workers and gives employers the resilience they need to grow their businesses.
+
+“We have based our recommendations on a careful marshalling of all the available economic evidence, alongside intense reflection and negotiation between our Commissioners. The advice presented is line with the ambition to protect the economy and labour market, giving fair and realistic rates for the year ahead.
+
+“The wider economic picture has been critical in helping decide the increase for 2027. Economic growth has been better than expected this year, but this growth is not leading to hiring. Furthermore, our stakeholders are worried about the risks of a further energy price shock to the economy.“
+
+The remit for younger workers continues to state the Government’s desire to lower the age of eligibility for the NLW to 18. Over the last 4 years we have made good progress on this aim and increased the 18–20 year old rate substantially, reducing the gap between it and the adult rate.
+
+While there is still potential to lower the age limit, especially for 20 year olds, demand for young workers has slowed and the risks associated with ambitious rises have increased. Therefore, we recommend pausing on alignment by recommending a percentage increase in line with that for the NLW, which we believe is consistent with the remit’s aim of prioritising youth employment. We recommend a 3.9 per cent increase or 42p to £11.27 for 18-20 year olds.
+
+For 16-17 year olds, the vast majority of whom are in full-time education, the recommended increase is 31p to £8.31. Employment for this age group has deteriorated over recent years. The evidence does not point to this being the result of minimum wage increase, however this decline is difficult to ignore so future increases are not risk free.
+
+Apprentices of all ages are entitled to the Apprentice Rate in the first year of their apprenticeship. Although vacancy numbers have declined faster than for all vacancies in the economy, we don’t think that the Apprentice Rate is the key factor here either. In light of this, alongside some concern from employers about the cost of employing apprentices, we are recommending an increase of 31p to £8.31 (3.9 per cent).
+
+The Low Pay Commission today publishes its advice to the Government and a short report summarising the evidence used in reaching these recommendations.`,
   },
   {
     label: "Roosevelt, 1941",

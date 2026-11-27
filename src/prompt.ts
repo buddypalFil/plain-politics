@@ -74,7 +74,7 @@ export function buildPrompt(text: string, lang: Lang, level: Level = "balanced",
       : "You explain political texts (news articles, speeches, bills, manifestos) to ordinary readers in plain words.",
     "Rules:",
     "- Be neutral. Do not take sides, praise or criticise anyone, or say how to vote.",
-    '- Say who says each thing (for example "the council says", "the candidate promises", "the bill would"); after the first mention, a short form is enough ("Rowan promises"). Never write a claim, promise or opinion from the text as if it were a fact.',
+    `- Say who says each thing (for example "the council says", "the candidate promises", "the bill would"); after the first mention, the surname alone is enough. Never write a claim, promise or opinion from the text as if it were a fact. Never guess anyone's gender: if the text doesn't say, use the person's name or "they" (turn "I will…" into "promises to…" or "says they will…").`,
     history
       ? `- Use only what is in the text, except in the "${CONTEXT_HEADING[lang]}" section. Never add facts, numbers or names that are not in it.`
       : "- Use only what is in the text. Never add facts, numbers or names that are not in it.",
@@ -89,7 +89,7 @@ export function buildPrompt(text: string, lang: Lang, level: Level = "balanced",
     `## ${h[0]}`,
     history
       ? 'One sentence a 12-year-old would understand. Report the speaker\'s view, not facts: start with the speaker (for example "The speaker says…"), and put words they use as a figure of speech, like "war" or "soldier", in quotation marks.'
-      : "One sentence a 12-year-old would understand.",
+      : 'One sentence a 12-year-old would understand. If it names a person, write "he" or "she" only if the text says which; otherwise use their name.',
     `## ${h[1]}`,
     `${bullets} with the main points.`,
     `## ${h[2]}`,
@@ -125,6 +125,9 @@ export function buildPrompt(text: string, lang: Lang, level: Level = "balanced",
   ].join("\n");
 }
 
+// "Where they differ" is the heart of a comparison, so it gets a little more room than the other sections.
+const DIFFER_BULLETS: Record<Level, string> = { quick: "Exactly 2 bullet points", balanced: "3 to 5 bullet points", detailed: "4 to 7 bullet points" };
+
 // Compare two texts on the same topic. Both are treated exactly the same way, and the answer never says
 // which one is better: the reader decides.
 export function buildComparePrompt(a: string, b: string, lang: Lang, level: Level = "balanced"): string {
@@ -150,7 +153,7 @@ export function buildComparePrompt(a: string, b: string, lang: Lang, level: Leve
     `## ${h[1]}`,
     `${bullets}: points that both texts share. If they agree on nothing, say so.`,
     `## ${h[2]}`,
-    `${bullets}. Each one starts with the topic in bold, then what Text A says and what Text B says, like this: **Cost**: Text A: ... Text B: ... Always write the labels exactly as "Text A:" and "Text B:", in English and with the colon, whatever language the rest is in.`,
+    `${DIFFER_BULLETS[level]}, one per topic. Each one starts with the topic in bold, then what Text A says and what Text B says, like this: **Cost**: Text A: ... Text B: ... Give the figures each text states for that topic (prices, amounts, how many), so a reader can compare them. Always write the labels exactly as "Text A:" and "Text B:", in English and with the colon, whatever language the rest is in.`,
     `## ${h[3]}`,
     `${bullets}: which groups of people each text would affect and how. Say Text A or Text B each time.`,
     `## ${h[4]}`,

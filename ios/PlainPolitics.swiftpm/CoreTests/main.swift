@@ -119,6 +119,7 @@ do {
     expect(t.contains("Write the words around a number in Italian too") && !t.contains("figure of speech"), "numbers rule; no history-only rule in Today")
     expect(t.contains("digits stay digits (years and dates too), and words like \"half\" or \"one in four\" stay words, never percentages"), "numbers rule: digits stay digits, half and one in four stay words")
     expect(t.contains("Say who says each thing") && h.contains("Say who says each thing"), "attribution rule, like the web")
+    expect(t.contains("Never guess anyone's gender") && t.contains("only if the text says which") && !t.contains("Rowan") && !h.contains("Rowan"), "no guessed gender, no example names that a small model could copy")
     expect(h.contains("in bold, a statement the speaker presents") && h.contains("figure of speech") && h.contains("including the first sentence") && h.contains("Report the speaker's view, not facts") && !t.contains("Report the speaker's view"), "history claims and figure-of-speech rule, headline included")
 }
 
@@ -134,7 +135,8 @@ do {
 }
 
 // Samples
-expect(samples.count == 7 && samples.filter(\.history).count == 3, "7 samples, 3 history")
+expect(samples.count == 8 && samples.filter(\.history).count == 3, "8 samples (one real GOV.UK release), 3 history")
+expect(findPersonalData(samples.first { $0.label.hasPrefix("Minimum wage") }!.text).isEmpty, "the real press release has no personal details")
 
 // Phones, postcodes and names written other ways and in other languages (same cases as tests/privacy.test.ts)
 do {

@@ -27,6 +27,7 @@ const RUNS = [
   { mode: "today", match: "Council", times: 2, sections: 6 },
   { mode: "today", match: "Campaign", times: 2, sections: 6 },
   { mode: "today", match: "Bill summary", times: 2, sections: 6 },
+  { mode: "today", match: "Minimum wage", times: 1, sections: 6 },
   { mode: "history", match: "Lincoln", times: 1, sections: 8 },
   { mode: "history", match: "Pankhurst", times: 1, sections: 8 },
   { mode: "history", match: "Roosevelt", times: 1, sections: 8 },

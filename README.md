@@ -21,7 +21,8 @@ It works in English, Italian, French, Spanish and German, and never takes sides 
 
 ## For judges: 2 minutes
 
-1. **Open the live site** in desktop Chrome: https://plain-politics-app.web.app. Click a sample, press **Explain it**.
+1. **Open the live site** in desktop Chrome: https://plain-politics-app.web.app. Click a sample (try **Minimum wage
+   (real, GOV.UK)**, a real government press release), press **Explain it**.
    The sticker says where it ran (**Ran on your device · Gemini Nano** or **Ran in the cloud**) and how long it took.
 2. **See each route.** Under **Run on**, pick **Cloud only** or **This device only** (on-device needs Chrome's
    built-in model: press **Set up on-device AI** once). Pick **Letter to my MP** with **Cloud only**: the privacy
@@ -32,7 +33,7 @@ It works in English, Italian, French, Spanish and German, and never takes sides 
    - [`src/firebase.ts#L93`](src/firebase.ts#L93): `getGenerativeModel(ai, { mode, inCloudParams, onDeviceParams })`,
      one model for both places;
    - [`src/route.ts#L23`](src/route.ts#L23): which mode each text gets (privacy, offline, length, availability), with tests;
-   - [`src/main.ts#L917`](src/main.ts#L917): the streamed call, and [`#L942`](src/main.ts#L942): if Gemini Nano fails
+   - [`src/main.ts#L924`](src/main.ts#L924): the streamed call, and [`#L949`](src/main.ts#L949): if Gemini Nano fails
      partway through an Auto run, the cloud takes over (never for a text with personal details);
    - iPhone: [`Engine.swift#L135`](ios/PlainPolitics.swiftpm/Sources/App/Engine.swift#L135):
      `hybridModel(primary: SystemLanguageModel.default, secondary: gemini)`.
@@ -127,31 +128,46 @@ The iPhone app uses **Firebase AI Logic** (hybrid, with Apple's on-device model)
 - Model output, Spot the spin marks and library entries go through renderers that escape all HTML
   ([`src/markdown.ts`](src/markdown.ts), [`src/spin.ts`](src/spin.ts)), so nothing can inject markup or scripts.
 - The prompts tell the model to stay neutral and to use only what is in the text; Compare treats both texts the
-  same and never says which is better. The modern samples are made up, so no living politician is quoted; the
-  History samples are real speeches in the public domain.
+  same and never says which is better. The modern samples are made up, so no living politician is quoted, except
+  one real text: a GOV.UK press release from the independent Low Pay Commission (minimum wage rates for April 2027;
+  contains public sector information licensed under the Open Government Licence v3.0). The History samples are real
+  speeches in the public domain.
 
 ## Quality
 
 - **Lighthouse** on the live site: **100 / 100 / 100 / 100** (performance, accessibility, best practices, SEO) on
   mobile and on desktop; first paint 0.9 s on a simulated slow phone.
-- **46 unit tests** (routing including offline, privacy guard, prompts in every language, Spot the spin, YouTube
+- **48 unit tests** (routing including offline, privacy guard, prompts in every language, Spot the spin, YouTube
   links, error messages, reading age, safe Markdown, giving up on a silent answer) and an end-to-end browser check
-  of every feature before each release. The iPhone app's core logic has 90 checks of its own, on the same cases.
-- **Accuracy, measured** ([`tools/accuracy.mjs`](tools/accuracy.mjs)): the prompt tells the model to copy every
-  number exactly as the text writes it, so the check explains each built-in sample and looks up every number of the
-  explainer in the original. On 26 Nov 2026, two runs (22 explainers: Today, History and Compare) found **120 of 123
-  numbers** in the original. The 3 others were all the same kind: in a "what to check" line, "cut in half" became
-  "50 percent" and "one shop in every four" became "25 percent". Correct sums, but not the text's own words. So the
-  prompt now says to keep words like "half" and "one in four" as words, and repeats it in the claims instruction,
-  where the slips happened (one more "half" became "50" in a later run). With the final prompt, two runs (22
-  explainers) found **119 of 119**. Every explainer in every run had all its sections, and a hand check of the first
-  run found each number attached to the right thing. Its limits:
-  it checks numbers, not meaning, and headless Chrome has no Gemini Nano, so it measures the cloud model.
-- **Plainer, measured**: with the app's own reading-age formula (each point counted as a sentence), the explainers of
-  the six single-text samples average a reading age of **12.0**, against **14.7** for the originals (Lincoln's speech:
-  16 → 11). A plain original stays plain (the Campaign speech is already 9). To run it: start `npm run dev` (with App Check set up as in [Run it yourself](#run-it-yourself)),
-  then `node tools/accuracy.mjs`. It needs Chrome, and it cannot run against the live site, whose reCAPTCHA check
-  blocks headless browsers.
+  of every feature before each release. The iPhone app's core logic has 93 checks of its own, on the same cases.
+- **Measured, not claimed: accurate, complete, plainer.** Three small checks anyone can rerun, on the built-in samples
+  (Today, History and Compare):
+  - **Accurate:** the prompt says to copy every number exactly as the text writes it, so
+    [`tools/accuracy.mjs`](tools/accuracy.mjs) looks up every number of each explainer in the original. With the final
+    rules, four cloud runs (45 explainers, including a real GOV.UK press release) found **262 of 262** numbers in the
+    original, and every explainer had all its sections. Earlier versions slipped 4 times, always the same way ("cut in half" became "50 percent" in a "what
+    to check" line); the rule is now repeated where that happened. A hand check of the first run found each number
+    attached to the right thing.
+  - **Complete:** [`tools/key-facts.mjs`](tools/key-facts.mjs) checks the facts a reader must not lose, listed for each
+    sample in [`tools/key-facts.json`](tools/key-facts.json) before any explainer was checked: **90%** kept on average
+    in the cloud (Balanced keeps the main points, so a detail like "eight storeys" can drop out). On the real press
+    release: 8 of 8.
+  - **Plainer:** with the app's own reading-age formula (each point counted as a sentence), the explainers average a
+    reading age of **12.5** in the cloud, against **14.9** for the originals (the real press release: 16 → 13). A plain
+    original stays plain, and the page then says so instead of claiming a drop.
+  - **On the device too:** [`tools/ondevice-accuracy.swift`](tools/ondevice-accuracy.swift) runs the same check on
+    Apple's on-device model, the iPhone app's first choice, with the app's own Swift prompt: **181 of 184** numbers in
+    the original over four runs (all three extras were the same correct definition, "score: a period of 20 years"),
+    every section complete, **88%** of key facts kept, a reading age of **10.5**, and about **10 seconds** per
+    explainer on a Mac. The small model is plainer but slips more: on the real press release it once wrote that the
+    rate *will* reach two thirds of median earnings, when the text says it won't. The sticker always says which
+    model wrote an explainer.
+  - Limits: these check numbers, listed facts and sentence length, not every shade of meaning. Gemini Nano in Chrome
+    can't be driven by a script, so the Chrome on-device path is shown in the video instead.
+  - To run them: start `npm run dev` (with App Check set up as in [Run it yourself](#run-it-yourself)), then
+    `node tools/accuracy.mjs` and `node tools/key-facts.mjs accuracy-results.json` (needs Chrome; the live site's
+    reCAPTCHA blocks headless browsers). On a Mac with Apple Intelligence: the `swiftc` line at the top of
+    `tools/ondevice-accuracy.swift`, then `node tools/key-facts.mjs ondevice-results.json`.
 - **Never stuck waiting**: if the cloud goes silent mid-answer, the page gives up after 25 seconds and tries again
   ([`src/stream.ts`](src/stream.ts)).
 - **Rides out Google's busy spells**: when Gemini is overloaded it can send half an explainer and then a "high demand"
@@ -165,7 +181,7 @@ Needs Node.js 22.18 or newer (the tests run the TypeScript files directly).
 
 ```bash
 npm install
-npm test        # 46 unit tests
+npm test        # 48 unit tests
 npm run dev     # http://localhost:5173
 ```
 
@@ -206,7 +222,9 @@ To install it (it is not on the Chrome Web Store):
 
 How it works: clicking the icon gives the extension Chrome's one-time permission for that tab (`activeTab`), so it
 asks for no access to your browsing in general. It reads the article text (or your selection) and passes it to the
-side panel with `postMessage`; the page only accepts text from the extension panel that embeds it. The panel's
+side panel with `postMessage`; the page only accepts text in its embedded mode, from the window that embeds it, when
+that window is a Chrome extension page (an unpacked extension's id differs on every computer, so it can't be pinned).
+Text that arrives this way still goes through the privacy guard, and the page sends nothing back but a count. The panel's
 iframe is allowed to use Chrome's built-in model (`allow="language-model"`), so the explainer still runs on the
 device when it can.
 
@@ -238,7 +256,7 @@ Where it runs follows the website's rules
 - **Never stuck waiting.** A cloud request gives up after 30 seconds of silence. A busy or silent cloud is tried three
   times: twice as a stream, then once asking for the whole answer at once (same idea as the website).
 - **App Check** protects the cloud calls (the debug provider in development builds).
-- The privacy guard, Spot the spin and the routing are plain Swift with no Firebase, checked by 90 tests on the same
+- The privacy guard, Spot the spin and the routing are plain Swift with no Firebase, checked by 93 tests on the same
   cases as the website ([`CoreTests/main.swift`](ios/PlainPolitics.swiftpm/CoreTests/main.swift)).
 
 **Run it.** The app targets iOS 26 and was built and tested with Xcode 27.2 and the iOS 27.2 Simulator. Open
@@ -281,7 +299,9 @@ src/markdown.ts       safe Markdown renderer
 src/samples.ts        made-up sample texts, public-domain speeches, Compare pairs
 public/sw.js          service worker for the offline app
 tests/                unit tests
-tools/accuracy.mjs    accuracy check: are the numbers in each explainer in the original?
+tools/accuracy.mjs    accuracy check (cloud): are the numbers in each explainer in the original?
+tools/ondevice-accuracy.swift   the same check on Apple's on-device model
+tools/key-facts.mjs   completeness check: does each explainer keep the key facts in tools/key-facts.json?
 extension/            Chrome extension (side panel, right-click menu)
 ios/                  iPhone app (SwiftUI; Sources/App: screen and Firebase, Sources/Core: routing, privacy, spin)
 firestore.rules       database rules

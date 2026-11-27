@@ -116,7 +116,7 @@ func buildPrompt(_ text: String, lang: Lang, level: Level = .balanced, mode: Mod
             : "You explain political texts (news articles, speeches, bills, manifestos) to ordinary readers in plain words.",
         "Rules:",
         "- Be neutral. Do not take sides, praise or criticise anyone, or say how to vote.",
-        "- Say who says each thing (for example \"the council says\", \"the candidate promises\", \"the bill would\"); after the first mention, a short form is enough (\"Rowan promises\"). Never write a claim, promise or opinion from the text as if it were a fact.",
+        "- Say who says each thing (for example \"the council says\", \"the candidate promises\", \"the bill would\"); after the first mention, the surname alone is enough. Never write a claim, promise or opinion from the text as if it were a fact. Never guess anyone's gender: if the text doesn't say, use the person's name or \"they\" (turn \"I will…\" into \"promises to…\" or \"says they will…\").",
         history
             ? "- Use only what is in the text, except in the \"\(lang.contextHeading)\" section. Never add facts, numbers or names that are not in it."
             : "- Use only what is in the text. Never add facts, numbers or names that are not in it.",
@@ -136,7 +136,7 @@ func buildPrompt(_ text: String, lang: Lang, level: Level = .balanced, mode: Mod
         "## \(h[0])",
         history
             ? "One sentence a 12-year-old would understand. Report the speaker's view, not facts: start with the speaker (for example \"The speaker says…\"), and put words they use as a figure of speech, like \"war\" or \"soldier\", in quotation marks."
-            : "One sentence a 12-year-old would understand.",
+            : "One sentence a 12-year-old would understand. If it names a person, write \"he\" or \"she\" only if the text says which; otherwise use their name.",
         "## \(h[1])",
         "\(bullets) with the main points.",
         "## \(h[2])",

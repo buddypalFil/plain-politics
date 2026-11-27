@@ -377,7 +377,7 @@ function renderChoices(): void {
       ? "A speech, declaration or letter from the past. History mode adds how it tries to persuade and its historical context. Try a real speech:"
       : comparing()
         ? "Two texts on the same topic, for example two parties' plans. See where they agree and differ, without being told which is better. Or try a made-up pair:"
-        : "Paste any political text, or try a made-up sample:";
+        : "Paste any political text, or try a sample (made up, or one real press release):";
   input2.hidden = $("label-a").hidden = $("label-b").hidden = !comparing();
   const lede = output.querySelector(".empty-lede");
   if (lede) {
@@ -406,8 +406,11 @@ function renderChoices(): void {
 $("mode-seg").addEventListener("click", (e) => {
   const b = (e.target as HTMLElement).closest<HTMLButtonElement>("button[data-mode]");
   if (!b) return;
+  const changed = mode !== b.dataset.mode;
   mode = b.dataset.mode as Mode;
   store.set("pp-mode", mode);
+  // A result from another tab would no longer match the page (a Lincoln explainer under Compare): clear it.
+  if (changed && lastResult && !running) clearResult();
   renderChoices();
 });
 $("level-seg").addEventListener("click", (e) => {
@@ -778,13 +781,17 @@ explainBtn.addEventListener("click", () => void booted.then(() => explain()));
 // After a result: clear the text and the explainer, and take the reader back up to an empty box.
 // (A tester's first wish: "add a button once you have done one text to do another one".)
 const againBtn = $<HTMLButtonElement>("again");
-function startOver(): void {
-  if (running) return;
+// The explainer goes; the text stays (used when switching tab, so a History result never sits under Compare).
+function clearResult(): void {
   stopSpeaking();
   hideError();
   for (const el of [actions, badge, routeNote, spinBox, $("gauge"), $("route"), redactSendBtn, sourceNote]) el.hidden = true;
   output.innerHTML = EMPTY_OUTPUT;
   lastResult = null;
+}
+function startOver(): void {
+  if (running) return;
+  clearResult();
   for (const box of [input, input2]) {
     box.value = "";
     // Same path as typing, so the saved draft, the count and the privacy guard all follow.
