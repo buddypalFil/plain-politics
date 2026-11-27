@@ -23,13 +23,13 @@
   <meta name="twitter:card" content="summary_large_image" />
 </head>
 <body data-mode="today">
-  <div class="wrap">
+  <header class="wrap">
     <div class="topbar">
       <span id="today" class="today"></span>
       <span class="strap">Private · Neutral · Plain</span>
       <div id="device-pill" class="pill" role="status">Checking on-device AI…</div>
     </div>
-    <header class="mast">
+    <div class="mast">
       <div class="ear l" aria-hidden="true"><b>Private first</b>Reads on your device when it can.</div>
       <h1><svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><rect x="2" y="2" width="60" height="60" rx="14" fill="#161513"/><g fill="none" stroke="#f4f0e8" stroke-width="4.2" stroke-linecap="round"><path d="M10 17h14c7 0 8 15 14 15"/><path d="M15 27h9c5 0 7 5 12 5"/><path d="M10 37h14c5 0 7-5 12-5"/><path d="M19 47h5c7 0 8-15 14-15"/><path d="M37 32h8"/></g><circle cx="52" cy="32" r="4.4" fill="#c4562a"/></svg>Plain Politics</h1>
       <div class="ear r" aria-hidden="true"><b>Free to read</b>No sign-up. No ads.</div>
@@ -37,7 +37,7 @@
       <p class="hybrid-line">On your device when it can · in the cloud only when it must · always says which</p>
       <!-- Phones only: the example front page is far below the text box. -->
       <a class="see-example" href="#out-panel">See what you get ↓</a>
-    </header>
+    </div>
     <div class="edition" aria-hidden="true"><span id="edition-no">Vol. I</span><span class="ed-mid">The plain-words edition</span><span>London</span></div>
     <nav class="sections" aria-label="Kind of text">
       <div class="tabs" role="group" aria-label="Kind of text" id="mode-seg">
@@ -49,7 +49,7 @@
       <a href="#lib-title" class="navlink">My library</a>
       <button id="install" class="navlink install" type="button" hidden>Install the app</button>
     </nav>
-  </div>
+  </header>
 
   <main class="wrap grid">
     <!-- Only shown inside the Chrome extension's side panel. -->
@@ -164,6 +164,8 @@
         <span>Neutral · takes no side</span>
       </div>
       <div id="badge" class="stamp" hidden></div>
+      <!-- Read aloud, next to the sticker (the same as Listen at the foot): easy to find for people who prefer to listen. -->
+      <button id="listen-top" class="listen-top" type="button" hidden aria-pressed="false" aria-label="Listen to the explainer">▶ Listen</button>
       <div id="route" class="route" hidden aria-label="Where this explainer ran">
         <span class="n" data-n="text"><i></i>Your text</span><span class="l"></span>
         <span class="n" data-n="guard"><i></i>Privacy guard</span><span class="l"></span>

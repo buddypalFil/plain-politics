@@ -8,6 +8,7 @@ import "@fontsource-variable/libre-franklin/wght.css";
 import "./style.css";
 import { buildPrompt, buildComparePrompt, HEADINGS, COMPARE_HEADINGS, LANGUAGE_NAMES, PERSUADES_HEADING, CONTEXT_HEADING, type Lang, type Level, type Mode } from "./prompt.ts";
 import { chooseRoute, shouldFallBackToCloud, deviceModelName, type DeviceStatus, type RunChoice } from "./route.ts";
+import { compareName } from "./compare.ts";
 import { renderMarkdown, firstLine, escapeHtml } from "./markdown.ts";
 import { getDeviceStatus, getImageDeviceStatus, hasPromptApi, warmUpDevice } from "./device.ts";
 import { readingAge, looksEnglish } from "./readability.ts";
@@ -127,9 +128,16 @@ function setRoute(where: "device" | "cloud", running: boolean): void {
 // ---------- Compare: "Where they differ" as A and B lines ----------
 // The model writes "**Topic**: Text A: ... Text B: ...". Each side gets its own line with an A or B mark.
 // If a line doesn't follow that pattern (another language, a different wording), it is left as written.
-function shapeDiffer(lang: Lang): void {
+function shapeDiffer(lang: Lang, names?: [string, string]): void {
   const card = [...output.querySelectorAll(".card")].find((c) => c.querySelector("h3")?.textContent?.trim() === COMPARE_HEADINGS[lang][2]);
   if (!card) return;
+  // A key under the heading, so A and B keep their names (the parties) while reading.
+  if (names) {
+    const key = document.createElement("p");
+    key.className = "ab-key";
+    key.innerHTML = `<span class="ab"><b>A</b>${escapeHtml(names[0])}</span><span class="ab"><b>B</b>${escapeHtml(names[1])}</span>`;
+    card.querySelector("h3")?.after(key);
+  }
   for (const li of card.querySelectorAll("li")) {
     const topic = li.querySelector(":scope > strong:first-child");
     const rest = li.innerHTML.slice(topic ? topic.outerHTML.length : 0).replace(/^\s*[:\-–—]\s*/, "");
@@ -159,7 +167,7 @@ function showSpin(texts: string[]): void {
     : "No loaded words from our list in this text.";
   spinClips.className = "spin-clips";
   spinClips.innerHTML = total
-    ? texts.map((t, i) => `<div class="clip-wrap">${texts.length > 1 ? `<div class="tlabel">Text ${"AB"[i]} · ${found[i].length}</div>` : ""}<div class="clip">${highlightHtml(t, found[i])}</div></div>`).join("")
+    ? texts.map((t, i) => `<div class="clip-wrap">${texts.length > 1 ? `<div class="tlabel">Text ${"AB"[i]} · ${found[i].length}</div>` : ""}<div class="clip" tabindex="0" role="region" aria-label="${texts.length > 1 ? `Text ${"AB"[i]}` : "Your text"}, with loaded words marked">${highlightHtml(t, found[i])}</div></div>`).join("")
     : "";
   scrollClipsToFirst("", false);
 }
@@ -341,12 +349,24 @@ function showGauge(original: string, explainer: string, lang: Lang): void {
 // ---------- Read aloud (the browser's own voice: free and private) ----------
 const speakBtn = $<HTMLButtonElement>("speak");
 const VOICE_LANG: Record<Lang, string> = { en: "en-GB", it: "it-IT", fr: "fr-FR", es: "es-ES", de: "de-DE" };
+const listenTop = $<HTMLButtonElement>("listen-top");
+// Both Listen buttons (at the foot and next to the sticker) show the same state.
+function syncListen(on: boolean): void {
+  speakBtn.textContent = on ? "Stop" : "Listen";
+  speakBtn.setAttribute("aria-pressed", String(on));
+  listenTop.textContent = on ? "■ Stop" : "▶ Listen";
+  listenTop.setAttribute("aria-pressed", String(on));
+  // Screen readers get words, not the ▶ / ■ symbols.
+  listenTop.setAttribute("aria-label", on ? "Stop reading aloud" : "Listen to the explainer");
+}
 function stopSpeaking(): void {
   if ("speechSynthesis" in window) speechSynthesis.cancel();
-  speakBtn.textContent = "Listen";
-  speakBtn.setAttribute("aria-pressed", "false");
+  syncListen(false);
 }
 speakBtn.hidden = !("speechSynthesis" in window);
+listenTop.addEventListener("click", () => speakBtn.click());
+// The top button appears whenever the result's actions do (a finished explainer), and goes with them.
+new MutationObserver(() => { listenTop.hidden = actions.hidden || speakBtn.hidden; }).observe(actions, { attributes: true, attributeFilter: ["hidden"] });
 speakBtn.addEventListener("click", () => {
   if (speechSynthesis.speaking) { stopSpeaking(); return; }
   // Read the sections only: not the "Check this claim" buttons or any open claim answers.
@@ -362,8 +382,7 @@ speakBtn.addEventListener("click", () => {
   u.rate = 0.95;
   u.onend = stopSpeaking;
   speechSynthesis.speak(u);
-  speakBtn.textContent = "Stop";
-  speakBtn.setAttribute("aria-pressed", "true");
+  syncListen(true);
 });
 
 function renderChoices(): void {
@@ -976,7 +995,7 @@ async function explainOnce(): Promise<void> {
     setRoute(source === "on_device" ? "device" : "cloud", false);
     // Reading age compares one original with its explainer, so it is left out of comparisons.
     if (!compare) showGauge(text, explainerProse(), lang);
-    else shapeDiffer(lang);
+    else shapeDiffer(lang, [compareName(a, "Text A"), compareName(b, "Text B")]);
     showSpin(compare ? [a, b] : [a]);
     addClaimButtons(lang);
     lastResult = { markdown, source, lang, text, findings, seconds: secs };

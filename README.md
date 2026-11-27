@@ -33,7 +33,7 @@ It works in English, Italian, French, Spanish and German, and never takes sides 
    - [`src/firebase.ts#L93`](src/firebase.ts#L93): `getGenerativeModel(ai, { mode, inCloudParams, onDeviceParams })`,
      one model for both places;
    - [`src/route.ts#L23`](src/route.ts#L23): which mode each text gets (privacy, offline, length, availability), with tests;
-   - [`src/main.ts#L924`](src/main.ts#L924): the streamed call, and [`#L949`](src/main.ts#L949): if Gemini Nano fails
+   - [`src/main.ts#L943`](src/main.ts#L943): the streamed call, and [`#L968`](src/main.ts#L968): if the on-device model fails
      partway through an Auto run, the cloud takes over (never for a text with personal details);
    - iPhone: [`Engine.swift#L135`](ios/PlainPolitics.swiftpm/Sources/App/Engine.swift#L135):
      `hybridModel(primary: SystemLanguageModel.default, secondary: gemini)`.
@@ -135,10 +135,17 @@ The iPhone app uses **Firebase AI Logic** (hybrid, with Apple's on-device model)
 
 ## Quality
 
-- **Lighthouse** on the live site: **100 / 100 / 100 / 100** (performance, accessibility, best practices, SEO) on
-  mobile and on desktop; first paint 0.9 s on a simulated slow phone.
-- **49 unit tests** (routing including offline, privacy guard, prompts in every language, Spot the spin, YouTube
-  links, error messages, reading age, safe Markdown, giving up on a silent answer) and an end-to-end browser check
+- **Lighthouse** on the live site (27 Nov): **100 / 100 / 100 / 100** (performance, accessibility, best practices,
+  SEO) on a simulated slow phone, first paint 1.0 s; **99 / 100 / 100 / 100** on desktop, where a web font swapping
+  in moves the text a little (layout shift 0.07, under Google's 0.1 limit for "good").
+- **Accessible on every screen, not just the first one:** Lighthouse only tests the empty front page, so
+  [`tools/a11y.mjs`](tools/a11y.mjs) runs axe-core on what a visitor actually sees: a Today explainer, the claim
+  drawer with Spot the spin filtered, large and easy reading, History, Compare and the privacy guard, in light and
+  dark, on a laptop and a phone. **0 problems in 18 runs** (WCAG 2.2 AA rules plus axe's best practices). Its first
+  run found three, now fixed: the marked text boxes in Spot the spin couldn't be scrolled with the keyboard, and the
+  date and strapline sat outside the page's landmarks.
+- **50 unit tests** (routing including offline, privacy guard, prompts in every language, Spot the spin, YouTube
+  links, error messages, reading age, safe Markdown, giving up on a silent answer, naming the two texts in Compare) and an end-to-end browser check
   of every feature before each release. The iPhone app's core logic has 93 checks of its own, on the same cases.
 - **Measured, not claimed: accurate, complete, plainer.** Three small checks anyone can rerun, on the built-in samples
   (Today, History and Compare):
@@ -181,7 +188,7 @@ Needs Node.js 22.18 or newer (the tests run the TypeScript files directly).
 
 ```bash
 npm install
-npm test        # 49 unit tests
+npm test        # 50 unit tests
 npm run dev     # http://localhost:5173
 ```
 
@@ -256,6 +263,10 @@ Where it runs follows the website's rules
   model answers, the top of the screen says "Using the cloud" and explains why, instead of "On-device AI ready".
 - **Never stuck waiting.** A cloud request gives up after 30 seconds of silence. A busy or silent cloud is tried three
   times: twice as a stream, then once asking for the whole answer at once (same idea as the website).
+- **Grows with your text size.** Every word follows the iPhone's text size setting (Dynamic Type): the explainer
+  all the way to the largest accessibility size, labels and buttons a little less so a row still fits. At those
+  sizes the date and status, the stamp and the settings rows stack instead of squeezing, and a long sample name
+  wraps instead of running off the screen ([`Sources/App/Support.swift`](ios/PlainPolitics.swiftpm/Sources/App/Support.swift)).
 - **App Check** protects the cloud calls (the debug provider in development builds).
 - The privacy guard, Spot the spin and the routing are plain Swift with no Firebase, checked by 93 tests on the same
   cases as the website ([`CoreTests/main.swift`](ios/PlainPolitics.swiftpm/CoreTests/main.swift)).

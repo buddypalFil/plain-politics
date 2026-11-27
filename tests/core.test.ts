@@ -315,3 +315,11 @@ test("the sticker names the right on-device model: Gemini Nano in Chrome, Edge's
   assert.equal(deviceModelName(chrome), "Gemini Nano");
   assert.equal(deviceModelName(edge), "Edge's built-in model");
 });
+
+test("Compare key: each text's name comes from its first line", async () => {
+  const { compareName } = await import("../src/compare.ts");
+  assert.equal(compareName("Riverside Party (fictional): Our plan for buses in Northvale\n\nBus routes…", "Text A"), "Riverside Party (fictional)");
+  assert.equal(compareName("\n  Valley Forward (fictional): More homes, faster", "Text B"), "Valley Forward (fictional)");
+  assert.equal(compareName("", "Text A"), "Text A");
+  assert.ok(compareName("A very long first line without any colon that goes on and on about the plan for the town centre", "Text A").endsWith("…"));
+});

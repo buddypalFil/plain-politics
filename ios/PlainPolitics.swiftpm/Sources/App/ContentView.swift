@@ -57,23 +57,25 @@ struct ContentView: View {
     // ---------- Masthead ----------
     private var masthead: some View {
         VStack(spacing: 6) {
-            HStack {
+            AdaptiveStack {
                 Text(Date.now.formatted(date: .long, time: .omitted).uppercased())
                 Spacer()
-                Circle().stroke(lineWidth: 1.5).frame(width: 7, height: 7)
-                    .background(Circle().fill(deviceAI.ready ? Color.ink : .clear))
-                Text(deviceAI.status.uppercased())
+                HStack {
+                    Circle().stroke(lineWidth: 1.5).frame(width: 7, height: 7)
+                        .background(Circle().fill(deviceAI.ready ? Color.ink : .clear))
+                    Text(deviceAI.status.uppercased())
+                }
             }
-            .font(.system(size: 10, weight: .semibold)).tracking(1.2).foregroundStyle(Color.ink2)
+            .sans(10, .semibold).tracking(1.2).foregroundStyle(Color.ink2)
             Rectangle().fill(Color.ink).frame(height: 1)
             Text("Plain Politics")
-                .font(.serif(46, .black))
-                .minimumScaleFactor(0.6).lineLimit(1)
+                .serif(46, .black)
+                .minimumScaleFactor(0.4).lineLimit(1)
                 .frame(maxWidth: .infinity)
                 .padding(.top, 6)
                 .accessibilityAddTraits(.isHeader)
             Text("Political text, explained in plain words.")
-                .font(.serif(16).italic()).foregroundStyle(Color.ink2)
+                .serif(16, italic: true).foregroundStyle(Color.ink2)
                 .frame(maxWidth: .infinity)
             DoubleRule().padding(.top, 6)
         }
@@ -84,7 +86,7 @@ struct ContentView: View {
         HStack(spacing: 22) {
             ForEach(Mode.allCases) { m in
                 Button { mode = m } label: {
-                    Text(m.title.uppercased()).font(.system(size: 12, weight: .semibold)).tracking(1.4)
+                    Text(m.title.uppercased()).sans(12, .semibold).tracking(1.4)
                         .foregroundStyle(mode == m ? Color.ink : Color.muted)
                         .padding(.bottom, 4)
                         .overlay(alignment: .bottom) { Rectangle().fill(mode == m ? Color.ink : .clear).frame(height: 2) }
@@ -102,15 +104,15 @@ struct ContentView: View {
             Text(mode == .history
                  ? "A speech, declaration or letter from the past. Try a real speech:"
                  : "A news article, a speech, a bill or a manifesto. Or try a sample (made up, or one real press release):")
-                .font(.serif(15)).foregroundStyle(Color.muted)
+                .serif(15).foregroundStyle(Color.muted)
             FlowRow(samples.filter { $0.history == (mode == .history) }) { s in
-                Button(s.label) { text = s.text; refusal = nil }
-                    .font(.serif(15, .medium)).underline(color: .rule)
+                Button { text = s.text; refusal = nil } label: { Text(s.label).multilineTextAlignment(.leading) }
+                    .serif(15, .medium).underline(color: .rule)
             }
             ZStack(alignment: .topLeading) {
                 TextEditor(text: $text)
                     .focused($editing)
-                    .font(.serif(15))
+                    .serif(15)
                     .scrollContentBackground(.hidden)
                     .padding(8)
                     .frame(minHeight: 170, maxHeight: 260)
@@ -118,7 +120,7 @@ struct ContentView: View {
                     .overlay(Rectangle().stroke(editing ? Color.ink : Color.rule, lineWidth: 1))
                     .accessibilityLabel("Text to explain")
                 if text.isEmpty {
-                    Text("Paste the text here…").font(.serif(15)).foregroundStyle(Color.muted)
+                    Text("Paste the text here…").serif(15).foregroundStyle(Color.muted)
                         .padding(.horizontal, 13).padding(.vertical, 16).allowsHitTesting(false)
                 }
             }
@@ -139,7 +141,7 @@ struct ContentView: View {
                 Spacer()
                 Text("\(text.count) characters").foregroundStyle(Color.muted)
             }
-            .font(.system(size: 12.5, weight: .medium))
+            .sans(12.5, .medium)
         }
     }
 
@@ -153,8 +155,8 @@ struct ContentView: View {
                     Button { level = l } label: {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(l.title).font(.serif(18, .bold))
-                                Text(l.hint).font(.system(size: 12, weight: .medium)).foregroundStyle(Color.muted)
+                                Text(l.title).serif(18, .bold)
+                                Text(l.hint).sans(12, .medium).foregroundStyle(Color.muted)
                             }
                             Spacer()
                             BallotBox(marked: level == l)
@@ -181,10 +183,11 @@ struct ContentView: View {
     }
 
     private func row(_ label: String, @ViewBuilder _ content: () -> some View) -> some View {
-        HStack {
-            Text(label).font(.system(size: 13, weight: .medium)).foregroundStyle(Color.muted)
+        let picker = content()
+        return AdaptiveStack {
+            Text(label).sans(13, .medium).foregroundStyle(Color.muted)
             Spacer()
-            content().pickerStyle(.menu)
+            picker.pickerStyle(.menu)
         }
         .padding(.vertical, 2)
         .overlay(alignment: .bottom) { Rectangle().fill(Color.rule).frame(height: 1) }
@@ -195,13 +198,13 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 10) {
             Button { Task { await explain() } } label: {
                 Text(engine.running ? "EXPLAINING…" : "EXPLAIN IT")
-                    .font(.system(size: 14, weight: .bold)).tracking(1.2)
+                    .sans(14, .bold).tracking(1.2)
                     .frame(maxWidth: .infinity).padding(.vertical, 15)
                     .foregroundStyle(Color.paper).background(Color.ink)
             }
             .disabled(engine.running)
             if let help = deviceAI.help {
-                Text(help).font(.system(size: 12.5, weight: .medium)).foregroundStyle(Color.muted)
+                Text(help).sans(12.5, .medium).foregroundStyle(Color.muted)
                     .padding(.leading, 10)
                     .overlay(alignment: .leading) { Rectangle().fill(Color.rule).frame(width: 2) }
             }
@@ -237,7 +240,7 @@ struct ContentView: View {
                     text = redact(text)
                     Task { await explain() }
                 }
-                .font(.system(size: 13, weight: .semibold))
+                .sans(13, .semibold)
                 .padding(.horizontal, 14).padding(.vertical, 9)
                 .overlay(Rectangle().stroke(Color.ink, lineWidth: 1.5))
             }
@@ -245,7 +248,7 @@ struct ContentView: View {
     }
 
     private func notice(_ message: String) -> some View {
-        Text(message).font(.system(size: 14, weight: .medium)).foregroundStyle(Color.rust)
+        Text(message).sans(14, .medium).foregroundStyle(Color.rust)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(10).background(Color.rustSoft)
             .overlay(alignment: .leading) { Rectangle().fill(Color.rust).frame(width: 3) }
@@ -264,13 +267,13 @@ struct ContentView: View {
             .overlay(alignment: .bottom) { Rectangle().fill(Color.ink).frame(height: 1).offset(y: 6) }
 
             Stamp(running: engine.running, onDevice: engine.ranOnDevice, seconds: engine.seconds)
-            if !routeNote.isEmpty { Text(routeNote).font(.serif(13.5).italic()).foregroundStyle(Color.muted) }
+            if !routeNote.isEmpty { Text(routeNote).serif(13.5, italic: true).foregroundStyle(Color.muted) }
 
             ForEach(sections) { s in
                 if s.id == 0 {
                     VStack(alignment: .leading, spacing: 4) {
                         Kicker(text: s.title.isEmpty ? lang.headings[0] : s.title)
-                        Text(md(s.lines.joined(separator: " "))).font(.serif(30, .bold)).fixedSize(horizontal: false, vertical: true)
+                        Text(md(s.lines.joined(separator: " "))).serif(30, .bold).fixedSize(horizontal: false, vertical: true)
                     }
                 } else {
                     SectionView(section: s)
@@ -281,7 +284,7 @@ struct ContentView: View {
             } else if !engine.markdown.isEmpty {
                 SpinView(text: explainedText, kind: $spinKind)
                 ShareLink(item: shareText(sections)) {
-                    Text("SHARE").font(.system(size: 12, weight: .bold)).tracking(1.2).underline()
+                    Text("SHARE").sans(12, .bold).tracking(1.2).underline()
                 }
                 .padding(.top, 4)
             }
@@ -304,9 +307,9 @@ struct ContentView: View {
             Rectangle().fill(Color.ink).frame(height: 3)
             Kicker(text: "How it works")
             Text("1. **Your text** stays in the app. 2. The **privacy guard** looks for emails, phone numbers, home addresses, postcodes, bank, card and National Insurance numbers and your own name, on your device. 3. **Apple Intelligence** explains it on your device when it can; **Gemini** in the cloud only when it can't, never with personal details. 4. A **stamp** says where it ran.")
-                .font(.serif(14)).foregroundStyle(Color.ink2)
+                .serif(14).foregroundStyle(Color.ink2)
             Text("Spot the spin always runs on your device. AI can make mistakes, so check important claims against the original source.")
-                .font(.system(size: 12, weight: .medium)).foregroundStyle(Color.muted)
+                .sans(12, .medium).foregroundStyle(Color.muted)
         }
         .padding(.top, 20)
     }
@@ -340,10 +343,10 @@ struct Stamp: View {
     var body: some View {
         let device = onDevice ?? true
         let color: Color = device ? .ink : .slate
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(running ? "WORKING…" : device ? "RAN ON YOUR DEVICE" : "RAN IN THE CLOUD").font(.system(size: 15, weight: .heavy))
+        AdaptiveStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(running ? "WORKING…" : device ? "RAN ON YOUR DEVICE" : "RAN IN THE CLOUD").sans(15, .heavy)
             if !running {
-                Text(String(format: "%.1f S · %@", seconds, device ? "NOTHING SENT" : "GOOGLE GEMINI")).font(.system(size: 11, weight: .semibold))
+                Text(String(format: "%.1f S · %@", seconds, device ? "NOTHING SENT" : "GOOGLE GEMINI")).sans(11, .semibold)
             }
         }
         .tracking(0.8).foregroundStyle(color)
@@ -357,17 +360,18 @@ struct Stamp: View {
 
 struct SectionView: View {
     let section: Section
+    @ScaledMetric(relativeTo: .largeTitle) private var dot: CGFloat = 6 // grows gently with the text size
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Rectangle().fill(Color.rule).frame(height: 1)
             Kicker(text: section.title, color: .ink)
             ForEach(Array(section.lines.enumerated()), id: \.offset) { _, line in
-                Text(md(line)).font(.serif(16)).foregroundStyle(Color.ink2)
+                Text(md(line)).serif(16).foregroundStyle(Color.ink2)
             }
             ForEach(Array(section.bullets.enumerated()), id: \.offset) { _, b in
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    Rectangle().fill(Color.ink).frame(width: 6, height: 6).alignmentGuide(.firstTextBaseline) { $0[.bottom] }
-                    Text(md(b)).font(.serif(16.5)).fixedSize(horizontal: false, vertical: true)
+                    Rectangle().fill(Color.ink).frame(width: dot, height: dot).alignmentGuide(.firstTextBaseline) { $0[.bottom] }
+                    Text(md(b)).serif(16.5).fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
@@ -389,12 +393,12 @@ struct SpinView: View {
                 Kicker(text: "On your device · nothing sent")
             }
             if matches.isEmpty {
-                Text("No loaded words from our list in this text.").font(.serif(15).italic()).foregroundStyle(Color.ink2)
+                Text("No loaded words from our list in this text.").serif(15, italic: true).foregroundStyle(Color.ink2)
             } else {
                 FlowRow([nil] + SpinKind.allCases.filter { counts[$0] != nil }) { (k: SpinKind?) in
                     Button { kind = k } label: {
                         Text("\(k?.name ?? "All") \(k.flatMap { counts[$0] } ?? matches.count)")
-                            .font(.system(size: 12, weight: .semibold))
+                            .sans(12, .semibold).multilineTextAlignment(.leading)
                             .padding(.horizontal, 9).padding(.vertical, 5)
                             .foregroundStyle(kind == k ? Color.paper : Color.ink)
                             .background(kind == k ? Color.ink : .clear)
@@ -403,14 +407,14 @@ struct SpinView: View {
                     .buttonStyle(.plain)
                 }
                 Text(kind?.why ?? "Pick a kind to see only those words, and why they matter.")
-                    .font(.serif(15).italic()).foregroundStyle(Color.ink2)
+                    .serif(15, italic: true).foregroundStyle(Color.ink2)
                 Text(highlighted(matches))
-                    .font(.serif(15)).lineSpacing(4)
+                    .serif(15).lineSpacing(4)
                     .padding(12).frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color.slip).overlay(Rectangle().stroke(Color.rule, lineWidth: 1))
             }
             Text("Loaded words aren't wrong, and every side uses them. This word list only helps you notice them.")
-                .font(.system(size: 12, weight: .medium)).foregroundStyle(Color.muted)
+                .sans(12, .medium).foregroundStyle(Color.muted)
         }
     }
 
@@ -456,21 +460,24 @@ struct WrapLayout: Layout {
         arrange(width: proposal.width ?? .infinity, subviews).size
     }
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        for (i, p) in arrange(width: bounds.width, subviews).points.enumerated() {
-            subviews[i].place(at: CGPoint(x: bounds.minX + p.x, y: bounds.minY + p.y), proposal: .unspecified)
+        let laid = arrange(width: bounds.width, subviews)
+        for (i, p) in laid.points.enumerated() {
+            subviews[i].place(at: CGPoint(x: bounds.minX + p.x, y: bounds.minY + p.y), proposal: ProposedViewSize(laid.sizes[i]))
         }
     }
-    private func arrange(width: CGFloat, _ subviews: Subviews) -> (points: [CGPoint], size: CGSize) {
-        var points: [CGPoint] = []
+    private func arrange(width: CGFloat, _ subviews: Subviews) -> (points: [CGPoint], sizes: [CGSize], size: CGSize) {
+        var points: [CGPoint] = [], sizes: [CGSize] = []
         var x: CGFloat = 0, y: CGFloat = 0, rowHeight: CGFloat = 0, maxX: CGFloat = 0
         for s in subviews {
-            let size = s.sizeThatFits(.unspecified)
+            var size = s.sizeThatFits(.unspecified)
+            // Wider than a whole line (a long label at a large text size): give it the line's width so it wraps.
+            if size.width > width { size = s.sizeThatFits(ProposedViewSize(width: width, height: nil)) }
             if x > 0 && x + size.width > width { x = 0; y += rowHeight + lineSpacing; rowHeight = 0 }
-            points.append(CGPoint(x: x, y: y))
+            points.append(CGPoint(x: x, y: y)); sizes.append(size)
             x += size.width + spacing
             rowHeight = max(rowHeight, size.height)
             maxX = max(maxX, x - spacing)
         }
-        return (points, CGSize(width: maxX, height: y + rowHeight))
+        return (points, sizes, CGSize(width: maxX, height: y + rowHeight))
     }
 }
