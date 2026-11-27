@@ -137,7 +137,7 @@ The iPhone app uses **Firebase AI Logic** (hybrid, with Apple's on-device model)
 
 - **Lighthouse** on the live site: **100 / 100 / 100 / 100** (performance, accessibility, best practices, SEO) on
   mobile and on desktop; first paint 0.9 s on a simulated slow phone.
-- **48 unit tests** (routing including offline, privacy guard, prompts in every language, Spot the spin, YouTube
+- **49 unit tests** (routing including offline, privacy guard, prompts in every language, Spot the spin, YouTube
   links, error messages, reading age, safe Markdown, giving up on a silent answer) and an end-to-end browser check
   of every feature before each release. The iPhone app's core logic has 93 checks of its own, on the same cases.
 - **Measured, not claimed: accurate, complete, plainer.** Three small checks anyone can rerun, on the built-in samples
@@ -181,7 +181,7 @@ Needs Node.js 22.18 or newer (the tests run the TypeScript files directly).
 
 ```bash
 npm install
-npm test        # 48 unit tests
+npm test        # 49 unit tests
 npm run dev     # http://localhost:5173
 ```
 
@@ -205,7 +205,8 @@ On-device AI is built into desktop Chrome 148 and newer (Windows 10/11, macOS 13
 flags. Chrome needs 22 GB of free disk space and either a GPU with more than 4 GB of memory or 16 GB of RAM. Open the
 site and press **Set up on-device AI** once to download Gemini Nano; after that the top of the page says
 "On-device AI ready" and explainers show "Ran on your device". To see the offline app: open the site once, turn
-Wi-Fi off, reload, and press **Explain it**.
+Wi-Fi off, reload, and press **Explain it**. Microsoft Edge offers the same built-in AI with its own model: the
+explainer then runs on the device there too, and the sticker names Edge's model instead of Gemini Nano.
 
 ## Chrome extension
 

@@ -107,3 +107,9 @@ export function chooseRoute(input: RouteInput): Route {
 export function shouldFallBackToCloud(o: { mode: Mode; ranOnDevice: boolean; online: boolean; alreadyFellBack: boolean }): boolean {
   return o.mode === "prefer_on_device" && o.ranOnDevice && o.online && !o.alreadyFellBack;
 }
+
+// Which on-device model the browser's built-in AI is, for the sticker: Chrome's is Gemini Nano; Microsoft Edge offers
+// the same built-in AI with its own model, so the sticker must not say Gemini Nano there.
+export function deviceModelName(userAgent: string): string {
+  return /\bEdg\//.test(userAgent) ? "Edge's built-in model" : "Gemini Nano";
+}

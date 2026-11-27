@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { chooseRoute, shouldFallBackToCloud } from "../src/route.ts";
+import { chooseRoute, shouldFallBackToCloud, deviceModelName } from "../src/route.ts";
 import { renderMarkdown, escapeHtml, firstLine } from "../src/markdown.ts";
 import { buildPrompt, buildComparePrompt, HEADINGS } from "../src/prompt.ts";
 
@@ -307,4 +307,11 @@ test("the one real sample says where it comes from and under which licence", asy
   const { SAMPLES } = await import("../src/samples.ts");
   const real = SAMPLES.find((s) => s.label.includes("real"));
   assert.ok(real && /GOV\.UK/.test(real.text) && /Open Government Licence/.test(real.text));
+});
+
+test("the sticker names the right on-device model: Gemini Nano in Chrome, Edge's own model in Edge", () => {
+  const chrome = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36";
+  const edge = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36 Edg/158.0.0.0";
+  assert.equal(deviceModelName(chrome), "Gemini Nano");
+  assert.equal(deviceModelName(edge), "Edge's built-in model");
 });

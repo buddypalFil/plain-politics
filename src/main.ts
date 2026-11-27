@@ -7,7 +7,7 @@ import "@fontsource-variable/literata/opsz-italic.css";
 import "@fontsource-variable/libre-franklin/wght.css";
 import "./style.css";
 import { buildPrompt, buildComparePrompt, HEADINGS, COMPARE_HEADINGS, LANGUAGE_NAMES, PERSUADES_HEADING, CONTEXT_HEADING, type Lang, type Level, type Mode } from "./prompt.ts";
-import { chooseRoute, shouldFallBackToCloud, type DeviceStatus, type RunChoice } from "./route.ts";
+import { chooseRoute, shouldFallBackToCloud, deviceModelName, type DeviceStatus, type RunChoice } from "./route.ts";
 import { renderMarkdown, firstLine, escapeHtml } from "./markdown.ts";
 import { getDeviceStatus, getImageDeviceStatus, hasPromptApi, warmUpDevice } from "./device.ts";
 import { readingAge, looksEnglish } from "./readability.ts";
@@ -1020,7 +1020,7 @@ function showBadge(source: "on_device" | "in_cloud", secs: string): void {
   // Once it's done, the stamp becomes a sticker that slaps onto the page and says which AI wrote it.
   badge.className = `stamp sticker ${source === "on_device" ? "device" : "cloud"}`;
   badge.innerHTML = source === "on_device"
-    ? `${SPARK}<span class="st-text"><b>Ran on your device</b><small>Gemini&nbsp;Nano · nothing&nbsp;sent · ${secs}&nbsp;s</small></span>`
+    ? `${SPARK}<span class="st-text"><b>Ran on your device</b><small>${deviceModelName(navigator.userAgent).replace(/ /g, "&nbsp;")} · nothing&nbsp;sent · ${secs}&nbsp;s</small></span>`
     : `${SPARK}<span class="st-text"><b>Ran in the cloud</b><small>Google&nbsp;Gemini · Firebase&nbsp;AI&nbsp;Logic · ${secs}&nbsp;s</small></span>`;
 }
 // A four-point spark in blue to violet, a nod to Gemini.
