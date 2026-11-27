@@ -136,8 +136,9 @@ The iPhone app uses **Firebase AI Logic** (hybrid, with Apple's on-device model)
 ## Quality
 
 - **Lighthouse** on the live site (27 Nov): **100 / 100 / 100 / 100** (performance, accessibility, best practices,
-  SEO) on a simulated slow phone, first paint 1.0 s; **99 / 100 / 100 / 100** on desktop, where a web font swapping
-  in moves the text a little (layout shift 0.07, under Google's 0.1 limit for "good").
+  SEO) on a simulated slow phone, first paint about 1 s; on desktop **98-99** for performance and 100 for the rest,
+  because a web font swapping in moves the text a little (layout shift 0.07-0.08, under Google's 0.1 limit for
+  "good").
 - **Accessible on every screen, not just the first one:** Lighthouse only tests the empty front page, so
   [`tools/a11y.mjs`](tools/a11y.mjs) runs axe-core on what a visitor actually sees: a Today explainer, the claim
   drawer with Spot the spin filtered, large and easy reading, History, Compare and the privacy guard, in light and
