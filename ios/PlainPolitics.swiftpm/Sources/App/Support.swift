@@ -2,6 +2,7 @@
 
 import SwiftUI
 import Network
+import AVFoundation
 
 // ---------- Colours: ink on paper, rust only for "pay attention", slate only for "ran in the cloud" ----------
 extension Color {
@@ -93,5 +94,70 @@ final class NetworkWatch: @unchecked Sendable {
     private init() {
         monitor.pathUpdateHandler = { [weak self] path in self?.online = path.status == .satisfied }
         monitor.start(queue: DispatchQueue(label: "network-watch"))
+    }
+}
+
+// ---------- Listen: the explainer read aloud by the iPhone's own voices (on the device; nothing is sent) ----------
+@MainActor
+final class Reader: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
+    @Published private(set) var speaking = false
+    private let synth = AVSpeechSynthesizer()
+    private var current: AVSpeechUtterance? // the reading the button shows; callbacks from older ones are ignored
+
+    override init() {
+        super.init()
+        synth.delegate = self
+    }
+
+    func toggle(_ text: String, lang: Lang) {
+        if speaking { stop(); return }
+        if synth.isSpeaking { synth.stopSpeaking(at: .immediate) }
+        // Spoken audio, like a podcast: it plays with the silent switch on and lowers other sound meanwhile.
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [.duckOthers])
+        let utterance = AVSpeechUtterance(string: text)
+        utterance.voice = AVSpeechSynthesisVoice(language: lang.voiceLanguage)
+        // Tests launch the app with -PPSilentListen YES to check Listen without sound.
+        if UserDefaults.standard.bool(forKey: "PPSilentListen") { utterance.volume = 0 }
+        current = utterance
+        synth.speak(utterance)
+        speaking = true
+    }
+
+    func stop() {
+        current = nil
+        if synth.isSpeaking { synth.stopSpeaking(at: .immediate) }
+        finished()
+    }
+
+    private func finished() {
+        speaking = false
+        // Give the sound back: music the reading turned down comes back up.
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+
+    private func ended(_ utterance: AVSpeechUtterance) {
+        guard utterance === current else { return }
+        current = nil
+        finished()
+    }
+
+    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
+        Task { @MainActor in self.ended(utterance) }
+    }
+    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
+        Task { @MainActor in self.ended(utterance) }
+    }
+}
+
+extension Lang {
+    /// The voice to read an explainer in this language with (British English, like the website's samples).
+    var voiceLanguage: String {
+        switch self {
+        case .en: return "en-GB"
+        case .it: return "it-IT"
+        case .fr: return "fr-FR"
+        case .es: return "es-ES"
+        case .de: return "de-DE"
+        }
     }
 }

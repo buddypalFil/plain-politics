@@ -471,7 +471,8 @@ body:not([data-mode="today"]) .empty .example-stamp, body:not([data-mode="today"
 .foot { margin-top: 34px; padding-bottom: 30px; color: var(--muted); font: 500 12px/1.5 var(--sans); }
 .foot-in { border-top: 1px solid var(--ink); padding-top: 10px; }
 .foot p { margin: 3px 0; }
-.foot a { color: var(--ink); }
+.foot a, .how-note a { color: var(--ink); }
+.how-note a { text-underline-offset: 3px; }
 
 /* ---------- Side panel page card ---------- */
 .embed-only { display: none; }

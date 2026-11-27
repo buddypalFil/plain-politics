@@ -4,6 +4,7 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var engine = Engine()
+    @StateObject private var reader = Reader()
     @State private var mode: Mode = .today
     @State private var level: Level = .balanced
     @State private var lang: Lang = .en
@@ -12,6 +13,7 @@ struct ContentView: View {
     @State private var refusal: (reason: String, privacy: Bool)?
     @State private var routeNote = ""
     @State private var explainedText = ""
+    @State private var explainedLang: Lang = .en
     @State private var spinKind: SpinKind?
     @FocusState private var editing: Bool
     @Environment(\.scenePhase) private var scenePhase
@@ -227,7 +229,9 @@ struct ContentView: View {
         case .run(let place, let reason):
             routeNote = reason
             explainedText = t
+            explainedLang = lang
             spinKind = nil
+            reader.stop()
             await engine.explain(prompt: buildPrompt(t, lang: lang, level: level, mode: mode), where: place)
         }
     }
@@ -283,13 +287,30 @@ struct ContentView: View {
                 ProgressView().tint(.ink).frame(maxWidth: .infinity)
             } else if !engine.markdown.isEmpty {
                 SpinView(text: explainedText, kind: $spinKind)
-                ShareLink(item: shareText(sections)) {
-                    Text("SHARE").sans(12, .bold).tracking(1.2).underline()
+                HStack(spacing: 22) {
+                    Button { reader.toggle(speechText(sections), lang: explainedLang) } label: {
+                        Text(reader.speaking ? "■ STOP" : "▶ LISTEN").sans(12, .bold).tracking(1.2)
+                    }
+                    .accessibilityLabel(reader.speaking ? "Stop reading aloud" : "Listen to the explainer")
+                    ShareLink(item: shareText(sections)) {
+                        Text("SHARE").sans(12, .bold).tracking(1.2).underline()
+                    }
                 }
+                .foregroundStyle(Color.ink)
                 .padding(.top, 4)
             }
         }
         .padding(.top, 8)
+    }
+
+    /// What Listen reads: each heading, then its lines and points, without the Markdown stars.
+    private func speechText(_ sections: [Section]) -> String {
+        let parts = sections.flatMap { s in [s.title.isEmpty ? explainedLang.headings[0] : s.title] + s.lines + s.bullets }
+        return parts.map { p in
+            let t = p.replacingOccurrences(of: "**", with: "").trimmingCharacters(in: .whitespaces)
+            return t.last.map { ".!?:;".contains($0) } == true ? t : t + "." // a pause after each heading and point
+        }
+        .joined(separator: "\n")
     }
 
     private func shareText(_ sections: [Section]) -> String {

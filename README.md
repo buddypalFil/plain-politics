@@ -245,8 +245,8 @@ Intelligence, through Foundation Models) answers first, and **Gemini in the clou
 ([`Sources/App/Engine.swift`](ios/PlainPolitics.swiftpm/Sources/App/Engine.swift)).
 
 It has the Today and History tabs with the same samples, Quick / Balanced / Detailed, all five languages, the privacy
-guard, Spot the spin, the stamp saying where it ran, and Share. Compare, photos and videos, claim checks and the
-library are on the website only.
+guard, Spot the spin, the stamp saying where it ran, Listen (read aloud by the iPhone's own voices, on the device)
+and Share. Compare, photos and videos, claim checks and the library are on the website only.
 
 Where it runs follows the website's rules
 ([`Sources/Core/Route.swift`](ios/PlainPolitics.swiftpm/Sources/Core/Route.swift)):
